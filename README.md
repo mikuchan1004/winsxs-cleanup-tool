@@ -26,6 +26,7 @@ DISM 명령을 기반으로 동작하며, 관리자 권한 확인 및
 👉 **권장:** ZIP 파일 다운로드 후 사용
 
 ---
+<img width="768" height="516" alt="스크린샷 2025-12-25 041555" src="https://github.com/user-attachments/assets/91ad48a1-247e-4219-853e-2a373306bfdd" />
 
 ## ▶ 사용 방법
 1. `WinSxS_Cleanup_Tool.exe`를 **관리자 권한으로 실행**

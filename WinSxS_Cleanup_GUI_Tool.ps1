@@ -1,6 +1,13 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+#============================
+# App Info 
+#============================
+$AppName    = "WinSxS Cleanup Tool"
+$AppVersion = "v1.0.1"
+$Vendor     = "powered by ChatGPT"
+
 # =============================
 # 관리자 권한 체크
 # =============================
@@ -65,7 +72,7 @@ function Parse-AnalyzeResult {
 # UI 생성
 # =============================
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "WinSxS Cleanup Tool"
+$form.Text = "WinSxS Cleanup Tool($AppVersion)"
 $form.Size = New-Object System.Drawing.Size(820, 560)
 $form.StartPosition = "CenterScreen"
 $form.MaximizeBox = $false
@@ -126,13 +133,16 @@ $form.Controls.AddRange(@(
 # =============================
 $form.Add_Shown({
     if (-not $script:Initialized) {
-        $logBox.AppendText("▶ '분석(Analyze)' 버튼을 눌러 WinSxS 분석을 시작하세요.`r`n")
+        $logBox.Clear()
+        $logBox.AppendText("▶ $AppName $AppVersion`r`n")
+        $logBox.AppendText("   $Vendor`r`n`r`n")
+        $logBox.AppendText("▶ '분석(Analyze)' 버튼을 눌러 WinSxS 정리를 시작하세요.`r`n")
         $logBox.AppendText("   분석에는 약 1~5분 정도 소요될 수 있습니다.`r`n")
+        $logBox.AppendText("   분석 중에는 창이 잠시 멈춘 것처럼 보일 수 있으나 정상 동작입니다.`r`n")
         $logBox.AppendText("   ResetBase 옵션은 되돌릴 수 없습니다.`r`n`r`n")
         $script:Initialized = $true
     }
 })
-
 # =============================
 # Analyze
 # =============================

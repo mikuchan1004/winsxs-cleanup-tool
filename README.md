@@ -44,8 +44,7 @@ DISM 명령어를 직접 입력하지 않아도,
   (exe + 기타 리소스 포함 압축 파일)
 
 ---
-
-<img width="850" height="573" alt="스크린샷 2025-12-26 195816" src="https://github.com/user-attachments/assets/96e772c6-9966-47fa-a146-33dd818af91d" />
+<img width="825" height="553" alt="스크린샷 2025-12-26 200657" src="https://github.com/user-attachments/assets/631cf9d3-5246-4e80-86ef-c32dedc4c9be" />
 
 ## ▶ 사용 방법
 

@@ -3,7 +3,7 @@
 [![Windows](https://img.shields.io/badge/Platform-Windows%2010%2B-blue?logo=windows)](#)
 [![.NET](https://img.shields.io/badge/.NET-net10.0--windows-blueviolet?logo=dotnet)](#)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
-[![Release](https://img.shields.io/github/v/release/USERNAME/REPO?include_prereleases&label=Release)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases)
+[![Release](https://img.shields.io/github/v/release/USERNAME/REPO?include_prereleases&label=Release)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases/tag/v1.0.4)
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
 https://www.virustotal.com/gui/file/2953a3fbf1a5a07089b0750a0f23f9dc1cd6b8147a40a09948f53f0dc01da6eb
 )

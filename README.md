@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
 [![Release](https://img.shields.io/github/v/release/USERNAME/REPO?include_prereleases&label=Release)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases/)
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/6b1af7ff370d673020ed98b211f4cd4cac0df7b72ea2b2c31aa688559bfa5adf
+https://www.virustotal.com/gui/file/8e24e6073c5639f82514667a7e0921821d4dd3c059573f54dc7806385745b500
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  

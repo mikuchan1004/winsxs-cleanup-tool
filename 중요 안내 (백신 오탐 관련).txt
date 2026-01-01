@@ -24,7 +24,7 @@ Windows 내장 도구(DISM)만을 사용하며
 문제 있으면 바로 제보 주세요. 바로 확인합니다.
 문제 발생 시 스크린샷과 함께 제보해주시면 빠르게 확인하겠습니다.
 
-바이러스토탈 검사 결과 : https://www.virustotal.com/gui/file/9ef57f583b34f07f62f0a685a8661b3c2cd209e0f0ecd3be1026b40f230bd8a7?nocache=1
+바이러스토탈 검사 결과 : https://www.virustotal.com/gui/file/2953a3fbf1a5a07089b0750a0f23f9dc1cd6b8147a40a09948f53f0dc01da6eb/detection
 
 WinSxS 폴더 및 ResetBase 옵션에 대한 설명은
  " WinSxS 폴더 그리고 ResetBase 옵션에 대한 설명문" 파일을 참고해주세요

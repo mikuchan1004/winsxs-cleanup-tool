@@ -1,88 +1,101 @@
 # 🧹 WinSxS Cleanup Tool
 
-Windows 10 / 11 환경에서  
-**WinSxS(Component Store)** 상태를 분석하고 안전하게 정리할 수 있는 GUI 도구입니다.
+Windows 구성 요소 저장소(WinSxS)를  
+**안전하게 분석하고 정리할 수 있는 GUI 기반 유틸리티**입니다.
 
-> DISM 명령어를 기반으로 하며,  
-> 복잡한 명령 없이 클릭 한 번으로 정리할 수 있도록 설계되었습니다.
+DISM 명령을 직접 입력하지 않아도  
+버튼 클릭만으로 분석 및 정리를 수행할 수 있도록 설계되었습니다.
 
 ---
+
+<img width="867" height="574" alt="스크린샷 2026-01-01 164455" src="https://github.com/user-attachments/assets/9e456698-9a53-4be9-b885-904ca7a9a289" />
 
 ## ✨ 주요 기능
 
-- WinSxS 상태 분석 (Analyze)
-- 예상 절감 가능 용량 표시
-- 안전한 정리 실행 (StartComponentCleanup)
+- DISM 기반 WinSxS 분석
+- 예상 정리 가능 용량(Reclaimable Size) 표시
+- 분석 결과에 따라 정리 버튼 자동 활성/비활성
+- 분석 / 정리 **완전 비동기 처리**
+- 실시간 로그 출력
+- 진행 중 경과 시간 표시
 - ResetBase 옵션 지원 (되돌릴 수 없음)
-- 정리 중 진행 시간 표시
-- UI 멈춤처럼 보이지 않는 진행 상태 표시
-- 다크 모드 지원 (설정 자동 저장)
+- 다크 모드 지원 (설정 자동 저장, JSON)
+- 도움말 창 제공
+- 전체 UI 한글화
+- 관리자 권한 / OS 자동 체크
 
 ---
 
-<img width="823" height="551" alt="스크린샷 2025-12-29 171813" src="https://github.com/user-attachments/assets/84c9852d-4db2-4254-bf04-1cf1aa76b49d" />
+## 💻 지원 운영체제
 
-## 🖥 실행 화면
+| 운영체제 | 지원 여부 |
+|--------|----------|
+| Windows 7 | ❌ |
+| Windows 8 / 8.1 | ❌ |
+| Windows 10 | ✅ |
+| Windows 11 | ✅ |
 
-- 분석 및 정리 진행 상황 로그 출력
-- 진행 중에도 응답하는 UI
-- ProgressBar + 시간 표시로 안정감 강화
-
----
-
-## 📦 다운로드
-
-GitHub Releases 페이지에서 최신 버전을 다운로드하세요.
-
-제공 파일:
-- `WinSxS_Cleanup_Tool.exe`
-- `WinSxS_Cleanup_Tool_v1.0.3.zip`
+> DISM `/AnalyzeComponentStore` 명령을 지원하는 환경에서만 동작합니다.
 
 ---
 
-## ⚠️ 주의 사항
+## 📦 제공 파일
 
-- **관리자 권한 필수**
-- **Windows 10 / 11 전용**
-- ResetBase 사용 시:
-  - 기존 업데이트 제거 불가
-  - 되돌릴 수 없음
-
-> 정리 대상이 없는 시스템에서는  
-> Cleanup 버튼이 비활성화될 수 있으며 이는 정상 동작입니다.
+- **WinSxS_Cleanup_GUI_Tool.exe**  
+- **WinSxS_Cleanup.zip**
 
 ---
 
-## 🛡 Windows SmartScreen 안내
+## ▶ 사용 방법
 
-본 도구는 개인 개발 도구로 서명되지 않았습니다.  
-처음 실행 시 SmartScreen 경고가 표시될 수 있습니다.
-
-- "추가 정보" → "실행" 선택 시 정상 실행됩니다.
-
----
-
-## 🧩 사용 기술
-
-- PowerShell
-- Windows Forms
-- DISM (Deployment Image Servicing and Management)
+1. `WinSxS_Cleanup_Tool.exe`를 **관리자 권한으로 실행**
+2. **[분석]** 버튼 클릭
+3. 예상 절감 용량 확인
+4. 필요 시 **[정리 시작]** 버튼 클릭
+5. 완료될 때까지 대기
 
 ---
 
-## 📅 릴리즈 정책
+## 📊 분석 결과 안내
 
-- 짧은 주기의 소규모 릴리즈 지향
-- UI/UX 및 안정성 개선 중심 업데이트
+- **예상 절감 용량: 0MB**
+  - 현재 정리 가능한 WinSxS 항목이 없는 정상 상태입니다.
+  - 이 경우 정리 버튼은 비활성화됩니다.
 
----
-
-## 🙌 Credits
-
-Powered by ChatGPT  
-Designed & Built with care
+- 분석/정리 중 창이 멈춘 것처럼 보여도  
+  **실시간 로그 및 시간 표시가 갱신된다면 정상 동작**입니다.
 
 ---
 
-> 이 도구는 시스템 유지 관리를 돕기 위한 유틸리티이며  
-> 사용 결과에 대한 책임은 사용자에게 있습니다.
+## ⚠ ResetBase 옵션 주의
+
+- 기존 Windows 업데이트를 되돌릴 수 없습니다
+- 향후 업데이트 제거가 불가능할 수 있습니다
+- 2단 경고 확인 후에만 실행됩니다
+
+---
+
+## 🛡 SmartScreen 안내
+
+개인 개발자가 배포한 파일로  
+Windows SmartScreen 경고가 표시될 수 있습니다.
+
+- **[추가 정보] → [실행]** 선택 시 정상 실행됩니다.
+
+---
+
+## 📜 라이선스
+
+- 소스 코드는 자유롭게 열람 및 수정할 수 있습니다
+- 실행 파일 사용으로 발생하는 책임은 사용자에게 있습니다
+
+---
+
+## 💬 기타
+
+- 문제 발생 시 GitHub Issues를 통해 제보해주세요
+- 피드백 및 개선 제안 환영합니다 🙌
+
+---
+
+powered by ChatGPT 🤖

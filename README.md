@@ -8,7 +8,8 @@ DISM 명령을 직접 입력하지 않아도
 
 ---
 
-<img width="867" height="574" alt="스크린샷 2026-01-01 164455" src="https://github.com/user-attachments/assets/9e456698-9a53-4be9-b885-904ca7a9a289" />
+<img width="908" height="609" alt="스크린샷 2026-01-01 213536" src="https://github.com/user-attachments/assets/55b40f5b-b326-4c0e-a469-4b11970646e3" />
+
 
 ## ✨ 주요 기능
 

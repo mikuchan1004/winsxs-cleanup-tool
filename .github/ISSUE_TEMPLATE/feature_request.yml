@@ -1,0 +1,13 @@
+name: ✨ Feature Request
+description: 새로운 기능이나 개선 사항을 제안합니다
+title: "[Feature] "
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    attributes:
+      label: 어떤 기능을 원하시나요?
+      placeholder: 자세히 적어주세요.
+    validations:
+      required: true
+

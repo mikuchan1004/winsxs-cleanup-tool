@@ -17,7 +17,7 @@ body:
     id: version
     attributes:
       label: 사용 중인 WinSxS Cleanup Tool 버전
-      description: (예: v1.0.5)
+      description: "(예: v1.0.5)"
       placeholder: v1.0.5
     validations:
       required: true

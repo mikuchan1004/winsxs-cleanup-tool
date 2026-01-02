@@ -3,9 +3,14 @@ bin/
 obj/
 _publish/
 .vs/
-#ECHO는 제외되었습니다.
-# Optional
+
+# User / IDE
 *.user
 *.suo
-*.json
+
+# Runtime generated config
+WinSxS_Cleanup_Tool.json
+
+# Release artifacts
+*.exe
 *.zip

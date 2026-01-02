@@ -11,11 +11,7 @@ permissions:
 jobs:
   build_release:
     runs-on: windows-latest
-
-    defaults:
-      run:
-        working-directory: WinSxSCleanupTool
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,17 +21,17 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish (single-file, self-contained)
-        shell: pwsh
-        run: |
-          dotnet --info
-          dotnet restore .\WinSxSCleanupTool.csproj
-          dotnet publish .\WinSxSCleanupTool.csproj -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
-            /p:PublishSingleFile=true `
-            /p:PublishTrimmed=false `
-            /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:EnableCompressionInSingleFile=true `
-            /p:ApplicationManifest=app.release.manifest
+     - name: Publish (single-file, self-contained)
+    shell: pwsh
+   run: |
+    dotnet restore ./WinSxSCleanupTool.csproj
+    dotnet publish ./WinSxSCleanupTool.csproj -c Release -r win-x64 --self-contained true -o ./_publish/win-x64 `
+      /p:PublishSingleFile=true `
+      /p:PublishTrimmed=false `
+      /p:IncludeNativeLibrariesForSelfExtract=true `
+      /p:EnableCompressionInSingleFile=true `
+      /p:ApplicationManifest=app.release.manifest
+
 
       - name: Zip artifact + SHA256
         shell: pwsh

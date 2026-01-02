@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/31b219eeaf82d38ca57154d308569f9e42880c50f9b226317104424118bd3ea5
+https://www.virustotal.com/gui/file/d483f9c68a123a2b9c70b5cece1f59890b727d8a27e9f39973e9c5eb0d3e2505
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -22,7 +22,7 @@ DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유�
 
 ---
 
-<img width="965" height="674" alt="스크린샷 2026-01-03 010321" src="https://github.com/user-attachments/assets/b72da479-2c06-4cfc-8660-10719d01ed67" />
+<img width="964" height="680" alt="스크린샷 2026-01-03 082029" src="https://github.com/user-attachments/assets/b9b0edf3-4d7b-42c9-82fe-418af2f574fe" />
 
 
 ## ✨ 주요 기능
@@ -99,6 +99,22 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ---
 
+## 📝 Changelog
+
+### v1.0.7
+- About 창 추가 (버전 / GitHub / 권한 정보 표시)
+- 네트워크 통신 없음 명시
+- UI 레이아웃 및 안정성 개선
+- Product / File Version 표시 방식 개선
+- single-file 배포 환경 대응
+
+### v1.0.5
+- WinSxS 분석 기능
+- 정리 / ResetBase 기능 제공
+- 실제 절감량 계산
+- 관리자 권한 감지 및 UI 반영
+- 로그 저장 및 설정 저장 기능
+
 ## 📦 배포 형태
 
 - 단일 실행 파일 (`.exe`)
@@ -120,3 +136,5 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 - Framework: .NET (Windows)
 - UI: WinForms
 - Vendor: Powered by ChatGPT
+
+

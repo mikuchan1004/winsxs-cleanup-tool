@@ -124,6 +124,7 @@ namespace WinSxSCleanupTool
         // =========================
         // Initialize UI
         // =========================
+
         private void InitializeComponent()
         {
             Text = BuildTitle();
@@ -160,6 +161,26 @@ namespace WinSxSCleanupTool
                 Height = 20,
                 TextAlign = ContentAlignment.MiddleRight
             };
+
+            var linkAbout = new LinkLabel
+            {
+                Text = "About",
+                Left = linkGitHub.Left - 60,
+                Top = linkGitHub.Top,
+                Width = 55,
+                Height = 20,
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            linkAbout.LinkClicked += (_, __) => ShowAbout();
+
+            Controls.Add(linkAbout);
+
+            // GitHub
+            linkGitHub.TextAlign = ContentAlignment.MiddleRight;
+
+            // About (GitHub 왼쪽에 딱 붙이기)
+            linkAbout.Left = linkGitHub.Left - linkAbout.Width - 8;
+            linkAbout.TextAlign = ContentAlignment.MiddleRight;
 
             chkReAnalyze = new CheckBox
             {
@@ -1008,6 +1029,14 @@ namespace WinSxSCleanupTool
             {
                 // ignore
             }
+        }
+        // =========================
+        // About
+        // =========================
+        private void ShowAbout()
+        {
+            using var dlg = new AboutForm(this);
+            dlg.ShowDialog(this);
         }
 
         // =========================

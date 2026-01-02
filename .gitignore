@@ -3,7 +3,13 @@ bin/
 obj/
 _publish/
 .vs/
-ECHO°¡ ¼³Á¤µÇ¾î ÀÖ½À´Ï´Ù.
+ECHOï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ ï¿½Ö½ï¿½ï¿½Ï´ï¿½.
 # Optional
 *.user
 *.suo
+*.manifest
+*.ico
+*.json
+Program.cs
+WinSxSCleanupTool.csproj
+WinSxSCleanupTool.sln

@@ -21,48 +21,52 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # ===== 디버그: 레포 구조 확인 =====
       - name: Debug repo layout
         shell: pwsh
         run: |
+          Write-Host "PWD:"
           pwd
+          Write-Host "`nRepo tree:"
           dir
-          dir -Recurse -Filter *.csproj
+          Write-Host "`nCSProj files:"
+          Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
 
-     - name: Publish (single-file, self-contained, UAC manifest)
-  shell: pwsh
-  run: |
-    dotnet --info
+      # ===== 빌드 & 퍼블리시 =====
+      - name: Publish (single-file, self-contained, UAC)
+        shell: pwsh
+        run: |
+          dotnet --info
 
-    Write-Host "`nPWD:"
-    pwd
-    Write-Host "`nRepo root listing:"
-    dir
-    Write-Host "`nSearching csproj..."
-    $csproj = Get-ChildItem -Recurse -Filter *.csproj -File |
-      Where-Object { $_.Name -match 'WinSxSCleanupTool' } |
-      Select-Object -First 1
+          # csproj 자동 탐색
+          $csproj = Get-ChildItem -Recurse -Filter *.csproj -File |
+            Where-Object { $_.Name -match 'WinSxSCleanupTool' } |
+            Select-Object -First 1
 
-    if (-not $csproj) {
-      Write-Host "ERROR: Could not find project file."
-      Write-Host "All csproj files found:"
-      Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
-      exit 1
-    }
+          if (-not $csproj) {
+            Write-Host "ERROR: csproj not found."
+            exit 1
+          }
 
-    Write-Host "Using csproj: $($csproj.FullName)"
+          Write-Host "Using csproj: $($csproj.FullName)"
 
-    dotnet restore $csproj.FullName
-    dotnet publish $csproj.FullName -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
-      /p:PublishSingleFile=true `
-      /p:PublishTrimmed=false `
-      /p:IncludeNativeLibrariesForSelfExtract=true `
-      /p:EnableCompressionInSingleFile=true `
-      /p:ApplicationManifest=app.release.manifest
+          dotnet restore $csproj.FullName
 
-    Write-Host "`nPublished files:"
-    dir .\_publish\win-x64 -Force
+          dotnet publish $csproj.FullName `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -o .\_publish\win-x64 `
+            /p:PublishSingleFile=true `
+            /p:PublishTrimmed=false `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            /p:EnableCompressionInSingleFile=true `
+            /p:ApplicationManifest=app.release.manifest
 
+          Write-Host "`nPublished files:"
+          dir .\_publish\win-x64 -Force
 
+      # ===== ZIP + SHA256 =====
       - name: Zip artifact + SHA256
         shell: pwsh
         run: |
@@ -70,11 +74,21 @@ jobs:
           $zip = "WinSxS-Cleanup-Tool-$tag-win-x64.zip"
 
           $exe = Get-ChildItem .\_publish\win-x64 -Filter *.exe -File | Select-Object -First 1
-          if (-not $exe) { throw "EXE not found in publish folder." }
+          if (-not $exe) {
+            Write-Host "ERROR: EXE not found."
+            exit 1
+          }
 
           Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
-          "SHA256  $zip  $((Get-FileHash $zip -Algorithm SHA256).Hash.ToLower())" | Out-File SHA256.txt -Encoding ascii
 
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "SHA256  $zip  $sha" | Out-File SHA256.txt -Encoding ascii
+
+          Write-Host "Built: $zip"
+          Write-Host "SHA-256:"
+          Get-Content SHA256.txt
+
+      # ===== GitHub Release =====
       - name: Create GitHub Release + Upload assets
         uses: softprops/action-gh-release@v2
         with:

@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -21,37 +22,39 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      # ===== 디버그: 레포 구조 확인 =====
       - name: Debug repo layout
         shell: pwsh
         run: |
-          Write-Host "PWD:"
-          pwd
-          Write-Host "`nRepo tree:"
-          dir
-          Write-Host "`nCSProj files:"
-          Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
+          Write-Host "PWD:"; pwd
+          Write-Host "`nTop-level files:"; dir
+          Write-Host "`nAll csproj:"; Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
+          Write-Host "`nAll manifests:"; Get-ChildItem -Recurse -Filter *.manifest -File | ForEach-Object { $_.FullName }
 
-      # ===== 빌드 & 퍼블리시 =====
       - name: Publish (single-file, self-contained, UAC)
         shell: pwsh
         run: |
           dotnet --info
 
-          # csproj 자동 탐색
-          $csproj = Get-ChildItem -Recurse -Filter *.csproj -File |
-            Where-Object { $_.Name -match 'WinSxSCleanupTool' } |
-            Select-Object -First 1
-
+          # 1) csproj 자동 탐색 (가장 안전)
+          $csproj = Get-ChildItem -Recurse -Filter *.csproj -File | Select-Object -First 1
           if (-not $csproj) {
-            Write-Host "ERROR: csproj not found."
-            exit 1
+            throw "No .csproj found in repository."
           }
-
           Write-Host "Using csproj: $($csproj.FullName)"
+
+          # 2) Release manifest 자동 탐색 (없어도 빌드는 되게끔 설계)
+          $manifest = Get-ChildItem -Recurse -Filter "app.release.manifest" -File | Select-Object -First 1
+          if ($manifest) {
+            Write-Host "Using manifest: $($manifest.FullName)"
+            $manifestArg = "/p:ApplicationManifest=$($manifest.FullName)"
+          } else {
+            Write-Host "WARNING: app.release.manifest not found. Publishing without explicit ApplicationManifest."
+            $manifestArg = $null
+          }
 
           dotnet restore $csproj.FullName
 
+          # publish 출력은 항상 루트 기준 _publish로 통일 (경로 꼬임 방지)
           dotnet publish $csproj.FullName `
             -c Release `
             -r win-x64 `
@@ -61,12 +64,11 @@ jobs:
             /p:PublishTrimmed=false `
             /p:IncludeNativeLibrariesForSelfExtract=true `
             /p:EnableCompressionInSingleFile=true `
-            /p:ApplicationManifest=app.release.manifest
+            $manifestArg
 
           Write-Host "`nPublished files:"
           dir .\_publish\win-x64 -Force
 
-      # ===== ZIP + SHA256 =====
       - name: Zip artifact + SHA256
         shell: pwsh
         run: |
@@ -75,8 +77,7 @@ jobs:
 
           $exe = Get-ChildItem .\_publish\win-x64 -Filter *.exe -File | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "ERROR: EXE not found."
-            exit 1
+            throw "EXE not found under .\_publish\win-x64"
           }
 
           Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
@@ -85,10 +86,8 @@ jobs:
           "SHA256  $zip  $sha" | Out-File SHA256.txt -Encoding ascii
 
           Write-Host "Built: $zip"
-          Write-Host "SHA-256:"
           Get-Content SHA256.txt
 
-      # ===== GitHub Release =====
       - name: Create GitHub Release + Upload assets
         uses: softprops/action-gh-release@v2
         with:

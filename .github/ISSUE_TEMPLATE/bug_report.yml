@@ -1,0 +1,112 @@
+
+name: 🐛 Bug Report
+description: WinSxS Cleanup Tool 사용 중 발생한 문제를 보고합니다
+title: "[Bug] "
+labels: ["bug"]
+assignees:
+  - mikuchan1004
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        감사합니다! 🧹  
+        아래 정보를 최대한 자세히 작성해주시면 문제 해결에 큰 도움이 됩니다.
+
+  - type: input
+    id: version
+    attributes:
+      label: 사용 중인 WinSxS Cleanup Tool 버전
+      description: (예: v1.0.5)
+      placeholder: v1.0.5
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows_version
+    attributes:
+      label: Windows 버전
+      options:
+        - Windows 11
+        - Windows 10 (22H2)
+        - Windows 10 (21H2 이하)
+        - 기타
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: 시스템 아키텍처
+      options:
+        - x64
+        - ARM64
+        - 잘 모르겠음
+    validations:
+      required: true
+
+  - type: dropdown
+    id: run_as_admin
+    attributes:
+      label: 관리자 권한으로 실행했나요?
+      options:
+        - 예
+        - 아니요
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 문제 재현 방법
+      description: 문제가 발생하기까지의 과정을 단계별로 적어주세요.
+      placeholder: |
+        1. 프로그램 실행
+        2. [분석] 클릭
+        3. 분석 완료 후 [정리] 클릭
+        4. 오류 발생
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대한 동작
+      description: 원래 기대했던 정상 동작을 적어주세요.
+      placeholder: 예) 정리 완료 후 요약 카드에 실제 절감량이 표시되어야 함
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 발생한 동작
+      description: 실제로 어떤 일이 발생했는지 적어주세요.
+      placeholder: 예) 진행률이 100%에서 멈춘 채 종료되지 않음
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: 로그 내용 (선택)
+      description: 프로그램에서 저장한 로그 파일 내용을 붙여주세요.
+      render: text
+      placeholder: |
+        [2026-01-03 22:15:42] Analyze started
+        [2026-01-03 22:15:48] ERROR: DISM exited with code ...
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 스크린샷 (선택)
+      description: 오류 화면이나 메시지가 있다면 첨부해주세요.
+
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠ ResetBase 관련 안내
+        - ResetBase 실행 후 발생한 문제라면 반드시 해당 여부를 알려주세요.
+        - ResetBase는 되돌릴 수 없습니다.
+
+        다시 한 번 버그 리포트에 감사드립니다 🙇

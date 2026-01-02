@@ -1031,7 +1031,12 @@ namespace WinSxSCleanupTool
             {
                 var asm = Assembly.GetExecutingAssembly();
                 var attr = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-                if (attr?.InformationalVersion is { Length: > 0 } v) return v;
+                if (attr?.InformationalVersion is { Length: > 0 } v)
+                {
+                    // 1.0.5+abcdef → 1.0.5
+                    int plus = v.IndexOf('+');
+                    return plus >= 0 ? v[..plus] : v;
+                }
 
                 return asm.GetName().Version?.ToString() ?? "?.?.?";
             }
@@ -1040,5 +1045,6 @@ namespace WinSxSCleanupTool
                 return "?.?.?";
             }
         }
+
     }
 }

@@ -28,21 +28,40 @@ jobs:
           dir
           dir -Recurse -Filter *.csproj
 
-      - name: Publish
-        shell: pwsh
-        run: |
-          $csproj = ".\WinSxSCleanupTool.csproj"
-          if (!(Test-Path $csproj)) { throw "csproj not found: $csproj" }
+     - name: Publish (single-file, self-contained, UAC manifest)
+  shell: pwsh
+  run: |
+    dotnet --info
 
-          dotnet restore $csproj
-          dotnet publish $csproj -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
-            /p:PublishSingleFile=true `
-            /p:PublishTrimmed=false `
-            /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:EnableCompressionInSingleFile=true `
-            /p:ApplicationManifest=app.release.manifest
+    Write-Host "`nPWD:"
+    pwd
+    Write-Host "`nRepo root listing:"
+    dir
+    Write-Host "`nSearching csproj..."
+    $csproj = Get-ChildItem -Recurse -Filter *.csproj -File |
+      Where-Object { $_.Name -match 'WinSxSCleanupTool' } |
+      Select-Object -First 1
 
-          dir .\_publish\win-x64 -Force
+    if (-not $csproj) {
+      Write-Host "ERROR: Could not find project file."
+      Write-Host "All csproj files found:"
+      Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
+      exit 1
+    }
+
+    Write-Host "Using csproj: $($csproj.FullName)"
+
+    dotnet restore $csproj.FullName
+    dotnet publish $csproj.FullName -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
+      /p:PublishSingleFile=true `
+      /p:PublishTrimmed=false `
+      /p:IncludeNativeLibrariesForSelfExtract=true `
+      /p:EnableCompressionInSingleFile=true `
+      /p:ApplicationManifest=app.release.manifest
+
+    Write-Host "`nPublished files:"
+    dir .\_publish\win-x64 -Force
+
 
       - name: Zip artifact + SHA256
         shell: pwsh

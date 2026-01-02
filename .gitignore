@@ -3,7 +3,7 @@ bin/
 obj/
 _publish/
 .vs/
-ECHO�� �����Ǿ� �ֽ��ϴ�.
+ECHO는 제외되었습니다.
 # Optional
 *.user
 *.suo

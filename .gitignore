@@ -1,0 +1,9 @@
+# Build outputs
+bin/
+obj/
+_publish/
+.vs/
+ECHO가 설정되어 있습니다.
+# Optional
+*.user
+*.suo

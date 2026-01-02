@@ -11,15 +11,16 @@ permissions:
 jobs:
   build_release:
     runs-on: windows-latest
-     defaults:
+
+    defaults:
       run:
         working-directory: WinSxSCleanupTool
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET (use global.json if present)
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
@@ -28,10 +29,13 @@ jobs:
         shell: pwsh
         run: |
           dotnet --info
-          dotnet restore
-          dotnet publish -c Release -r win-x64 --self-contained true -o "_publish/win-x64" `
-            /p:PublishSingleFile=true /p:PublishTrimmed=false `
-            /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
+          dotnet restore .\WinSxSCleanupTool.csproj
+          dotnet publish .\WinSxSCleanupTool.csproj -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
+            /p:PublishSingleFile=true `
+            /p:PublishTrimmed=false `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            /p:EnableCompressionInSingleFile=true `
+            /p:ApplicationManifest=app.release.manifest
 
       - name: Zip artifact + SHA256
         shell: pwsh
@@ -39,17 +43,21 @@ jobs:
           $tag = "${{ github.ref_name }}"  # e.g. v1.0.6
           $zip = "WinSxS-Cleanup-Tool-$tag-win-x64.zip"
 
-          # ⚠️ EXE 이름이 다르면 아래 줄의 파일명만 바꾸면 됩니다.
-          $exe = ".\_publish\win-x64\WinSxSCleanupTool.exe"
-
-          if (!(Test-Path $exe)) {
-            Write-Host "EXE not found at: $exe"
-            Write-Host "Published files:"
-            Get-ChildItem ".\_publish\win-x64" -Force
+          $publishDir = ".\_publish\win-x64"
+          if (!(Test-Path $publishDir)) {
+            Write-Host "Publish dir not found: $publishDir"
+            Get-ChildItem . -Force
             exit 1
           }
 
-          Compress-Archive -Path $exe -DestinationPath $zip -Force
+          $exe = Get-ChildItem $publishDir -Filter *.exe -File | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "EXE not found in: $publishDir"
+            Get-ChildItem $publishDir -Force
+            exit 1
+          }
+
+          Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
           (Get-FileHash $zip -Algorithm SHA256).Hash | Out-File "SHA256.txt" -Encoding ascii
 
           Write-Host "Built: $zip"
@@ -60,6 +68,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            WinSxS-Cleanup-Tool-*.zip
-            SHA256.txt
+            WinSxSCleanupTool/WinSxSCleanupTool/WinSxS-Cleanup-Tool-*.zip
+            WinSxSCleanupTool/WinSxSCleanupTool/SHA256.txt
           generate_release_notes: true

@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <Version>1.0.5</Version>
+    <AssemblyVersion>1.0.5.0</AssemblyVersion>
+    <FileVersion>1.0.5.0</FileVersion>
+    <InformationalVersion>1.0.5</InformationalVersion>
+
+    <AssemblyTitle>WinSxS Cleanup Tool</AssemblyTitle>
+    <Product>WinSxS Cleanup Tool</Product>
+    <Company>Powered by ChatGPT</Company>
+
+    <ApplicationIcon>broom.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Debug: UAC 강제 X (F5 편하게) -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <ApplicationManifest>app.debug.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <!-- Release: UAC 강제 O -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <ApplicationManifest>app.release.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="broom.ico" />
+    <None Include="app.debug.manifest" />
+    <None Include="app.release.manifest" />
+  </ItemGroup>
+
+</Project>

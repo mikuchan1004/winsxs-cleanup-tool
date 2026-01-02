@@ -3,13 +3,8 @@ bin/
 obj/
 _publish/
 .vs/
-ECHO는 제외되었습니다.
+#ECHO는 제외되었습니다.
 # Optional
 *.user
 *.suo
-*.manifest
-*.ico
 *.json
-Program.cs
-WinSxSCleanupTool.csproj
-WinSxSCleanupTool.sln

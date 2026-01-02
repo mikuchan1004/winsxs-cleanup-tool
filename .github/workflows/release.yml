@@ -24,27 +24,17 @@ jobs:
       - name: Debug repo layout
         shell: pwsh
         run: |
-          Write-Host "PWD:"
           pwd
-          Write-Host "`nRepo root listing:"
           dir
-          Write-Host "`nCSProj found:"
           dir -Recurse -Filter *.csproj
 
-      - name: Publish (single-file, self-contained, UAC manifest)
+      - name: Publish
         shell: pwsh
         run: |
           $csproj = ".\WinSxSCleanupTool.csproj"
-          if (!(Test-Path $csproj)) {
-            Write-Host "ERROR: csproj not found at $csproj"
-            Write-Host "Found csproj files:"
-            dir -Recurse -Filter *.csproj
-            exit 1
-          }
+          if (!(Test-Path $csproj)) { throw "csproj not found: $csproj" }
 
-          dotnet --info
           dotnet restore $csproj
-
           dotnet publish $csproj -c Release -r win-x64 --self-contained true -o .\_publish\win-x64 `
             /p:PublishSingleFile=true `
             /p:PublishTrimmed=false `
@@ -52,37 +42,19 @@ jobs:
             /p:EnableCompressionInSingleFile=true `
             /p:ApplicationManifest=app.release.manifest
 
-          Write-Host "`nPublished files:"
           dir .\_publish\win-x64 -Force
 
       - name: Zip artifact + SHA256
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"  # e.g. v1.0.6
+          $tag = "${{ github.ref_name }}"
           $zip = "WinSxS-Cleanup-Tool-$tag-win-x64.zip"
 
-          $publishDir = ".\_publish\win-x64"
-          if (!(Test-Path $publishDir)) {
-            Write-Host "ERROR: Publish dir not found: $publishDir"
-            dir -Recurse .\_publish -Force
-            exit 1
-          }
-
-          $exe = Get-ChildItem $publishDir -Filter *.exe -File | Select-Object -First 1
-          if (-not $exe) {
-            Write-Host "ERROR: EXE not found in: $publishDir"
-            dir $publishDir -Force
-            exit 1
-          }
+          $exe = Get-ChildItem .\_publish\win-x64 -Filter *.exe -File | Select-Object -First 1
+          if (-not $exe) { throw "EXE not found in publish folder." }
 
           Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
-
-          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "SHA256  $zip  $sha" | Out-File "SHA256.txt" -Encoding ascii
-
-          Write-Host "Built: $zip"
-          Write-Host "SHA-256:"
-          Get-Content "SHA256.txt"
+          "SHA256  $zip  $((Get-FileHash $zip -Algorithm SHA256).Hash.ToLower())" | Out-File SHA256.txt -Encoding ascii
 
       - name: Create GitHub Release + Upload assets
         uses: softprops/action-gh-release@v2

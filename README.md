@@ -21,9 +21,7 @@ DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유�
 > 🌐 네트워크 통신, 백그라운드 상주, 광고 등은 **일절 없습니다**.
 
 ---
-
-<img width="964" height="680" alt="스크린샷 2026-01-03 082029" src="https://github.com/user-attachments/assets/b9b0edf3-4d7b-42c9-82fe-418af2f574fe" />
-
+<img width="967" height="670" alt="스크린샷 2026-01-04 030016" src="https://github.com/user-attachments/assets/315595b7-f17b-482a-88d4-5a8b7dc58e9a" />
 
 ## ✨ 주요 기능
 
@@ -101,8 +99,9 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ## 📦 배포 형태
 
-- 본 프로그램은 **단일 실행 파일(EXE) 형태로 배포**됩니다.
-- **네트워크 통신을 전혀 사용하지 않으며**, Windows 공식 DISM 명령만 호출합니다.
+- Self-contained (런타임 포함)
+- 실행 파일 + 필수 네이티브 DLL만 포함
+- 불필요한 언어 리소스 제거 (ko 전용)
 
 ---
 

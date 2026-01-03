@@ -102,12 +102,13 @@ namespace WinSxSCleanupTool
             LoadSettingsSafe();
 
             InitializeComponent();
+            ApplyDangerButtonStyle();
             ApplySettingsToWindow();
 
             // 폼 아이콘: EXE에 박힌 아이콘을 그대로 사용 (가장 안정적)
             try
             {
-                Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
+                Icon = Icon.ExtractAssociatedIcon(System.Windows.Forms.Application.ExecutablePath) ?? Icon;
             }
             catch
             {
@@ -244,6 +245,7 @@ namespace WinSxSCleanupTool
             btnAnalyze.Click += async (_, __) => await AnalyzeAsync();
             btnCleanup.Click += async (_, __) => await CleanupAsync(resetBase: false);
             btnResetBase.Click += async (_, __) => await CleanupAsync(resetBase: true);
+
             btnCancel.Click += (_, __) => _cts?.Cancel();
             btnSaveLog.Click += (_, __) => SaveLog();
             linkGitHub.LinkClicked += (_, __) => OpenUrl(GitHubUrl);
@@ -508,7 +510,7 @@ namespace WinSxSCleanupTool
             }
         }
 
-        // ResetBase 2단 확인 (카운트다운 후 확인 버튼 활성)
+        // ResetBase 2단 확인 (카운트다운 + 체크박스)
         private Task<bool> ShowResetBaseTwoStepConfirmAsync()
         {
             var tcs = new TaskCompletionSource<bool>();
@@ -517,8 +519,8 @@ namespace WinSxSCleanupTool
             {
                 Text = "경고 - ResetBase",
                 StartPosition = FormStartPosition.CenterParent,
-                Width = 520,
-                Height = 230,
+                Width = 540,
+                Height = 300,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
                 MinimizeBox = false
@@ -528,27 +530,41 @@ namespace WinSxSCleanupTool
             {
                 Left = 16,
                 Top = 16,
-                Width = 470,
+                Width = 500,
                 Height = 90,
                 Text =
                     "ResetBase는 되돌릴 수 없습니다.\n" +
                     "실행하면 기존 컴포넌트 버전으로 되돌릴 수 없게 됩니다.\n\n" +
-                    "아래 '확인' 버튼이 활성화될 때까지 기다린 후 진행하세요."
+                    "아래 체크 후, '확인' 버튼이 활성화될 때까지 기다린 뒤 진행하세요."
             };
 
-            var btnOk = new Button { Text = "확인", Left = 270, Top = 120, Width = 100, Height = 34, Enabled = false };
-            var btnCancel = new Button { Text = "취소", Left = 380, Top = 120, Width = 100, Height = 34 };
+            var chk = new CheckBox
+            {
+                Left = 16,
+                Top = 110,
+                Width = 500,
+                Height = 24,
+                Text = "위 내용을 이해했으며 ResetBase를 실행하겠습니다."
+            };
 
             var lblCountdown = new Label
             {
                 Left = 16,
-                Top = 128,
+                Top = 140,
                 Width = 240,
                 Height = 24,
                 Text = "대기: 5초"
             };
 
-            dlg.Controls.AddRange(new Control[] { lbl, lblCountdown, btnOk, btnCancel });
+            var btnOk = new Button { Text = "확인", Left = 310, Top = 170, Width = 100, Height = 34, Enabled = false };
+            var btnCancel = new Button { Text = "취소", Left = 420, Top = 170, Width = 100, Height = 34 };
+
+            dlg.Controls.AddRange(new Control[] { lbl, chk, lblCountdown, btnOk, btnCancel });
+
+            bool countdownDone = false;
+            void UpdateOk() => btnOk.Enabled = countdownDone && chk.Checked;
+
+            chk.CheckedChanged += (_, __) => UpdateOk();
 
             btnCancel.Click += (_, __) =>
             {
@@ -562,9 +578,9 @@ namespace WinSxSCleanupTool
                 tcs.TrySetResult(true);
             };
 
-            // 카운트다운
             int remain = 5;
-            var timer = new System.Windows.Forms.Timer { Interval = 1000 };
+            var timer = new System.Windows.Forms.Timer { Interval = 1000, Enabled = true };
+
             timer.Tick += (_, __) =>
             {
                 remain--;
@@ -573,7 +589,8 @@ namespace WinSxSCleanupTool
                     timer.Stop();
                     timer.Dispose();
                     lblCountdown.Text = "진행 가능";
-                    btnOk.Enabled = true;
+                    countdownDone = true;
+                    UpdateOk();
                 }
                 else
                 {
@@ -581,14 +598,13 @@ namespace WinSxSCleanupTool
                 }
             };
 
-            dlg.Shown += (_, __) => timer.Start();
             dlg.FormClosed += (_, __) =>
             {
-                if (!tcs.Task.IsCompleted)
-                    tcs.TrySetResult(false);
-
-                if (timer.Enabled) timer.Stop();
-                timer.Dispose();
+                if (timer.Enabled)
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                }
             };
 
             dlg.ShowDialog(this);
@@ -1075,5 +1091,20 @@ namespace WinSxSCleanupTool
             }
         }
 
+        private void ApplyDangerButtonStyle()
+        {
+            if (btnResetBase == null) return;
+
+            btnResetBase.Text = "ResetBase (위험)";
+            btnResetBase.UseVisualStyleBackColor = false;
+
+            btnResetBase.BackColor = Color.FromArgb(180, 50, 50);
+            btnResetBase.ForeColor = Color.White;
+
+            btnResetBase.FlatStyle = FlatStyle.Flat;
+            btnResetBase.FlatAppearance.BorderColor = Color.FromArgb(140, 30, 30);
+            btnResetBase.FlatAppearance.BorderSize = 1;
+        }
     }
+
 }

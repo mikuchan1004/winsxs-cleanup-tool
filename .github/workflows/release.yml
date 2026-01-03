@@ -3,16 +3,16 @@ index 1111111..2222222 100644
 --- a/.github/workflows/release.yml
 +++ b/.github/workflows/release.yml
 @@ -1,115 +1,123 @@
- name: Release
- 
- on:
-   push:
-     tags:
-       - 'v*'
- 
- permissions:
-   contents: write
- 
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
  jobs:
    build-and-release:
      runs-on: windows-latest

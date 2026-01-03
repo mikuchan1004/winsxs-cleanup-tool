@@ -1,38 +1,168 @@
-name: Release
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 1111111..2222222 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -1,115 +1,123 @@
+ name: Release
+ 
+ on:
+   push:
+     tags:
+       - 'v*'
+ 
+ permissions:
+   contents: write
+ 
+ jobs:
+   build-and-release:
+     runs-on: windows-latest
+ 
+     steps:
+       - name: Checkout repository
+         uses: actions/checkout@v4
+         with:
+           fetch-depth: 0   # tags 포함
+ 
+       - name: Setup .NET
+         uses: actions/setup-dotnet@v4
+         with:
+           dotnet-version: '8.0.x'
+ 
+       - name: Publish (single-file, self-contained)
+         shell: pwsh
+         run: |
+-          dotnet publish `
+-            -c Release `
+-            -r win-x64 `
+-            --self-contained true `
+-            -o .\_publish\win-x64 `
+-            /p:PublishSingleFile=true `
+-            /p:PublishTrimmed=false `
+-            /p:IncludeNativeLibrariesForSelfExtract=true `
+-            /p:EnableCompressionInSingleFile=true
++          $ErrorActionPreference = "Stop"
++
++          $rid = "win-x64"
++          $out = Join-Path $env:GITHUB_WORKSPACE "dist\$rid"
++          New-Item -ItemType Directory -Force -Path $out | Out-Null
++
++          # csproj 경로가 다르면 여기만 수정
++          $proj = "WinSxSCleanupTool.csproj"
++
++          dotnet restore
++          dotnet build -c Release --no-restore
++
++          dotnet publish $proj -c Release -r $rid `
++            --self-contained true `
++            -o $out `
++            /p:PublishSingleFile=true `
++            /p:PublishTrimmed=false `
++            /p:IncludeNativeLibrariesForSelfExtract=true `
++            /p:EnableCompressionInSingleFile=true
++
++          Write-Host "Published to: $out"
+ 
+       - name: Zip EXE + generate SHA256
+         shell: pwsh
+         run: |
+-          $tag = "${{ github.ref_name }}"
+-          $zip = "WinSxS-Cleanup-Tool-$tag-win-x64.zip"
+-
+-          $exe = Get-ChildItem .\_publish\win-x64 -Filter *.exe -File | Select-Object -First 1
+-          if (-not $exe) {
+-            throw "EXE not found in _publish/win-x64"
+-          }
+-
+-          Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
+-
+-          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+-          "SHA256  $zip  $sha" | Out-File SHA256.txt -Encoding ascii
+-
+-          Write-Host "ZIP: $zip"
+-          Write-Host "SHA256: $sha"
+-
+-      - name: Prepare release body from RELEASE_NOTES.md (strict)
+-        shell: pwsh
+-        run: |
+-          $tag = "${{ github.ref_name }}"
+-          $notes = "RELEASE_NOTES.md"
+-          $out = "release_body.md"
+-
+-          if (-not (Test-Path $notes)) {
+-            throw "RELEASE_NOTES.md not found."
+-          }
+-
+-          $lines = Get-Content $notes
+-          $start = ($lines | Select-String -SimpleMatch "## $tag").LineNumber
+-          if (-not $start) {
+-            throw "Section '## $tag' not found in RELEASE_NOTES.md"
+-          }
+-
+-          $startIdx = $start - 1
+-          $next = ($lines[($startIdx+1)..($lines.Count-1)] | Select-String -Pattern "^##\s+v\d+\.\d+\.\d+").LineNumber
+-          if ($next) {
+-            $endIdx = $startIdx + $next - 2
+-          } else {
+-            $endIdx = $lines.Count - 1
+-          }
+-
+-          $section = ($lines[$startIdx..$endIdx] -join "`n")
+-
+-          $repo = "${{ github.repository }}"
+-          $header = @()
+-          $header += "## $tag"
+-          $header += ""
+-          $header += "**Downloads**"
+-          $header += "- (Asset) WinSxS-Cleanup-Tool-$tag-win-x64.zip"
+-          $header += "- (Asset) SHA256.txt"
+-          $header += ""
+-          $header += "**Compare**"
+-          $prev = ($lines | Select-String -Pattern "^##\s+(v\d+\.\d+\.\d+)").Matches.Value | Select-Object -Skip 1 -First 1
+-          if ($prev) {
+-            $header += "https://github.com/$repo/compare/$prev...$tag"
+-            $header += ""
+-          }
+-          $header += "---"
+-          $header += ""
+-
+-          ($header -join "`n") + $section | Out-File $out -Encoding utf8
+-          Write-Host "Release body prepared."
++          $ErrorActionPreference = "Stop"
++
++          $tag = "${{ github.ref_name }}"   # vX.Y.Z
++          $rid = "win-x64"
++          $dist = Join-Path $env:GITHUB_WORKSPACE "dist\$rid"
++
++          if (!(Test-Path $dist)) { throw "dist folder not found: $dist" }
++
++          $zipName = "WinSxS-Cleanup-Tool-$tag-$rid.zip"
++          $zipPath = Join-Path $env:GITHUB_WORKSPACE $zipName
++
++          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
++          Compress-Archive -Path (Join-Path $dist "*") -DestinationPath $zipPath -Force
++
++          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLower()
++          $shaPath = "$zipPath.sha256"
++          "$hash  $zipName" | Out-File -Encoding ascii -NoNewline $shaPath
++
++          "ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
++          "SHA=$shaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
++
++          Write-Host "ZIP    : $zipPath"
++          Write-Host "SHA256  : $hash"
+ 
+       - name: Create GitHub Release
+         uses: softprops/action-gh-release@v2
+         with:
+           files: |
+-            WinSxS-Cleanup-Tool-*.zip
+-            SHA256.txt
+-          body_path: release_body.md
++            ${{ env.ZIP }}
++            ${{ env.SHA }}
++          body_path: RELEASE_NOTES.md
+           generate_release_notes: false
 
-on:
-  push:
-    tags:
-      - "v*"
-
-permissions:
-  contents: write
-
-jobs:
-  build_and_release:
-    name: Build + Publish + GitHub Release
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET (8.x)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Restore
-        shell: pwsh
-        run: |
-          dotnet restore
-
-      - name: Build (Release)
-        shell: pwsh
-        run: |
-          dotnet build -c Release --no-restore
 
       # --------------------------
       # Publish (single-file EXE)

@@ -121,21 +121,7 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ---
 
-## 📝 Changelog
 
-### v1.0.7
-- About 창 추가 (버전 / GitHub / 권한 정보 표시)
-- 네트워크 통신 없음 명시
-- UI 레이아웃 및 안정성 개선
-- Product / File Version 표시 방식 개선
-- single-file 배포 환경 대응
-
-### v1.0.5
-- WinSxS 분석 기능
-- 정리 / ResetBase 기능 제공
-- 실제 절감량 계산
-- 관리자 권한 감지 및 UI 반영
-- 로그 저장 및 설정 저장 기능
 
 
 

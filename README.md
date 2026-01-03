@@ -121,6 +121,16 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ---
 
+## 📜 Changelog (요약)
+
+### v1.0.8
+- Publish 구조 정리
+- Self-contained 배포 개선
+- 파일 구성 최소화
+
+➡ 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
+
+
 
 
 

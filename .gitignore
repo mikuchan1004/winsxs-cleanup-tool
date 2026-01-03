@@ -23,3 +23,6 @@ release-run.cmd
 release-debug.cmd
 
 release.cmd
+release-debug_FIXED.cmd
+release-run_FIXED.cmd
+release_FIXED.cmd

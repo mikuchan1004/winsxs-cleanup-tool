@@ -69,7 +69,7 @@ jobs:
           Write-Host "`nPublished files:"
           dir .\_publish\win-x64 -Force
 
-      - name: Zip artifact + SHA256
+            - name: Zip artifact + SHA256
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
@@ -87,6 +87,50 @@ jobs:
 
           Write-Host "Built: $zip"
           Get-Content SHA256.txt
+
+      - name: Extract release body from RELEASE_NOTES.md
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $notes = "RELEASE_NOTES.md"
+          $out = "release_body.md"
+
+          if (-not (Test-Path $notes)) {
+            "## $tag`n`n(Release notes file not found: RELEASE_NOTES.md)" | Out-File $out -Encoding utf8
+            exit 0
+          }
+
+          $lines = Get-Content $notes
+          $start = ($lines | Select-String -SimpleMatch "## $tag").LineNumber
+          if (-not $start) {
+            "## $tag`n`n(Section not found in RELEASE_NOTES.md. Please add: `n## $tag ...)" | Out-File $out -Encoding utf8
+            exit 0
+          }
+
+          $startIdx = $start - 1
+          $endIdx = $lines.Count
+
+          for ($i = $startIdx + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s+v\d+\.\d+\.\d+') {
+              $endIdx = $i
+              break
+            }
+          }
+
+          $section = $lines[$startIdx..($endIdx-1)] -join "`n"
+          $section | Out-File $out -Encoding utf8
+
+          Write-Host "Release body extracted to $out"
+          Write-Host $section
+
+      - name: Create GitHub Release + Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            WinSxS-Cleanup-Tool-*.zip
+            SHA256.txt
+          body_path: release_body.md
+          generate_release_notes: false
 
       - name: Create GitHub Release + Upload assets
         uses: softprops/action-gh-release@v2

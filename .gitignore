@@ -27,3 +27,4 @@ release-run_FIXED.cmd
 release_FIXED.cmd
 release.ps1
 publish.cmd
+publish_fixed.cmd

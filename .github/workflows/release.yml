@@ -9,88 +9,36 @@ permissions:
   contents: write
 
 jobs:
-  build_and_release:
+  build:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
         with:
-          fetch-depth: 0
+          dotnet-version: 8.0.x
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Restore
-        shell: pwsh
+      - name: Publish
         run: |
-          dotnet restore
-
-      - name: Build (Release)
-        shell: pwsh
-        run: |
-          dotnet build -c Release --no-restore
-
-      - name: Publish (win-x64, self-contained, single file)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          $rid = "win-x64"
-          $out = Join-Path $env:GITHUB_WORKSPACE "dist\$rid"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-
-          # csproj 경로가 다르면 여기만 수정
-          $proj = "WinSxSCleanupTool.csproj"
-
-          dotnet publish $proj -c Release -r $rid `
-            --self-contained true `
-            -o $out `
+          dotnet publish -c Release -r win-x64 --self-contained true `
             /p:PublishSingleFile=true `
-            /p:PublishTrimmed=false `
             /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:EnableCompressionInSingleFile=true
+            /p:EnableCompressionInSingleFile=true `
+            -o dist
 
-          Write-Host "Published to: $out"
-          Get-ChildItem $out | Select-Object Name, Length
-
-      - name: Package (zip + sha256)
+      - name: Zip + SHA256
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
+          $zip = "WinSxSCleanupTool-${{ github.ref_name }}.zip"
+          Compress-Archive dist\* $zip
+          Get-FileHash $zip -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $zip" } |
+            Out-File "$zip.sha256" -Encoding ascii
 
-          $tag = "${{ github.ref_name }}"   # vX.Y.Z
-          $rid = "win-x64"
-          $dist = Join-Path $env:GITHUB_WORKSPACE "dist\$rid"
-
-          if (!(Test-Path $dist)) { throw "dist folder not found: $dist" }
-
-          $zipName = "WinSxSCleanupTool-$tag-$rid.zip"
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE $zipName
-
-          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-          Compress-Archive -Path (Join-Path $dist "*") -DestinationPath $zipPath -Force
-
-          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLower()
-          $shaPath = "$zipPath.sha256"
-          "$hash  $zipName" | Out-File -Encoding ascii -NoNewline $shaPath
-
-          "ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "SHA=$shaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-          Write-Host "ZIP    : $zipPath"
-          Write-Host "SHA256 : $hash"
-
-      - name: Create GitHub Release (notes + assets)
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          body_path: RELEASE_NOTES.md
           files: |
-            ${{ env.ZIP }}
-            ${{ env.SHA }}
-          draft: false
-          prerelease: false
+            *.zip
+            *.sha256
+          body_path: RELEASE_NOTES.md

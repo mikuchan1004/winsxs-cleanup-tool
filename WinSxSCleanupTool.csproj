@@ -34,16 +34,17 @@
     <!-- (권장) AssemblyVersion은 고정: 바인딩 문제 방지 -->
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
 
-    <!-- “제품 버전(Version)”은 사람이 관리 (메이저/마이너 정도) -->
-    <Version>1.0.7</Version>
-
     <!-- 빌드 시점 기반 자동 버전 -->
     <!-- Format: yyyy.doy.HHMM (예: 2026.003.0612) -->
     <FileVersion>$([System.DateTime]::Now.ToString("yyyy")).$([System.DateTime]::Now.DayOfYear.ToString("000")).$([System.DateTime]::Now.ToString("HHmm")).0</FileVersion>
 
     <!-- 어바웃 창 등에서 보여줄 “표시용 버전 문자열” -->
     <InformationalVersion>$(Version)+build.$([System.DateTime]::Now.ToString("yyyyMMdd-HHmm"))</InformationalVersion>
-    
+
+    <SatelliteResourceLanguages>ko</SatelliteResourceLanguages>
+
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
   </PropertyGroup>
 
   <ItemGroup>

@@ -26,3 +26,4 @@ release.cmd
 release-debug_FIXED.cmd
 release-run_FIXED.cmd
 release_FIXED.cmd
+release.ps1

@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/d483f9c68a123a2b9c70b5cece1f59890b727d8a27e9f39973e9c5eb0d3e2505
+https://www.virustotal.com/gui/file/5b300fc80676441c30d134ef37154b4bb305ce1f53e6156fbfb05f058f776470
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  

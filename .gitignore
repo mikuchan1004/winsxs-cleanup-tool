@@ -14,5 +14,11 @@ WinSxS_Cleanup_Tool.json
 # Release artifacts
 *.exe
 *.zip
-release.cmd
 /Properties
+
+# release helpers / logs
+__debug.log
+__release_debug.log
+release-run.cmd
+release-debug.cmd
+

@@ -18,6 +18,8 @@
     <Company>Powered by ChatGPT</Company>
 
     <ApplicationIcon>broom.ico</ApplicationIcon>
+
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <!-- Debug: UAC 강제 X (F5 편하게) -->

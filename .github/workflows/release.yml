@@ -16,28 +16,26 @@ jobs:
   release:
     runs-on: windows-latest
     env:
+      PROJ: WinSxSCleanupTool.csproj
+      RID: win-x64
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
-      RID: win-x64
-      PROJ: WinSxSCleanupTool.csproj
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish (single exe)
+      - name: Publish (single-file exe)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
-          $out = Join-Path $env:GITHUB_WORKSPACE "dist"
+          $out = "$env:GITHUB_WORKSPACE\dist"
           if (Test-Path $out) { Remove-Item $out -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $out | Out-Null
 
@@ -50,41 +48,38 @@ jobs:
             /p:EnableCompressionInSingleFile=true `
             -o $out
 
-          $exe = Get-ChildItem $out -Filter *.exe -File | Select-Object -First 1
-          if (-not $exe) { throw "EXE not found in dist" }
+          $exe = Get-ChildItem $out -Filter *.exe | Select-Object -First 1
+          if (-not $exe) { throw "EXE not found" }
 
-          "EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "EXE=$($exe.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Package (exe zip + sha256)
+      - name: Package (exe only)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
           $tag = "${{ github.ref_name }}"
-          $zipName = "WinSxSCleanupTool-$tag-$env:RID.zip"
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE $zipName
+          $zip = "WinSxSCleanupTool-$tag-win-x64.zip"
 
-          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-          Compress-Archive -Path $env:EXE -DestinationPath $zipPath -Force
+          Compress-Archive $env:EXE $zip -Force
 
-          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLower()
-          $shaPath = "$zipPath.sha256"
-          "$hash  $zipName" | Out-File -Encoding ascii -NoNewline $shaPath
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Out-File "$zip.sha256" -Encoding ascii -NoNewline
 
-          "ZIP=$zipPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "SHA=$shaPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ZIP=$zip" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "SHA=$zip.sha256" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Release notes source
+      - name: Decide release notes source
         id: notes
         shell: pwsh
         run: |
           if (Test-Path "RELEASE_NOTES.md") {
-            "use_file=true"  | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "use_file=true" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
-            "use_file=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "use_file=false" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
 
-      - name: Create GitHub Release (RELEASE_NOTES.md)
+      - name: Create GitHub Release (notes file)
         if: steps.notes.outputs.use_file == 'true'
         uses: softprops/action-gh-release@v2
         with:

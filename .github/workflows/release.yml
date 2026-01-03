@@ -1,61 +1,32 @@
-name: Build & Release (win-x64 single-file)
+name: Release
 
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  build_release:
+  build-and-release:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags 포함
 
-      - name: Setup .NET 8
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: '8.0.x'
 
-      - name: Debug repo layout
+      - name: Publish (single-file, self-contained)
         shell: pwsh
         run: |
-          Write-Host "PWD:"; pwd
-          Write-Host "`nTop-level files:"; dir
-          Write-Host "`nAll csproj:"; Get-ChildItem -Recurse -Filter *.csproj -File | ForEach-Object { $_.FullName }
-          Write-Host "`nAll manifests:"; Get-ChildItem -Recurse -Filter *.manifest -File | ForEach-Object { $_.FullName }
-
-      - name: Publish (single-file, self-contained, UAC)
-        shell: pwsh
-        run: |
-          dotnet --info
-
-          # 1) csproj 자동 탐색 (가장 안전)
-          $csproj = Get-ChildItem -Recurse -Filter *.csproj -File | Select-Object -First 1
-          if (-not $csproj) {
-            throw "No .csproj found in repository."
-          }
-          Write-Host "Using csproj: $($csproj.FullName)"
-
-          # 2) Release manifest 자동 탐색 (없어도 빌드는 되게끔 설계)
-          $manifest = Get-ChildItem -Recurse -Filter "app.release.manifest" -File | Select-Object -First 1
-          if ($manifest) {
-            Write-Host "Using manifest: $($manifest.FullName)"
-            $manifestArg = "/p:ApplicationManifest=$($manifest.FullName)"
-          } else {
-            Write-Host "WARNING: app.release.manifest not found. Publishing without explicit ApplicationManifest."
-            $manifestArg = $null
-          }
-
-          dotnet restore $csproj.FullName
-
-          # publish 출력은 항상 루트 기준 _publish로 통일 (경로 꼬임 방지)
-          dotnet publish $csproj.FullName `
+          dotnet publish `
             -c Release `
             -r win-x64 `
             --self-contained true `
@@ -63,13 +34,9 @@ jobs:
             /p:PublishSingleFile=true `
             /p:PublishTrimmed=false `
             /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:EnableCompressionInSingleFile=true `
-            $manifestArg
+            /p:EnableCompressionInSingleFile=true
 
-          Write-Host "`nPublished files:"
-          dir .\_publish\win-x64 -Force
-
-      - name: Zip artifact + SHA256
+      - name: Zip EXE + generate SHA256
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}"
@@ -77,7 +44,7 @@ jobs:
 
           $exe = Get-ChildItem .\_publish\win-x64 -Filter *.exe -File | Select-Object -First 1
           if (-not $exe) {
-            throw "EXE not found under .\_publish\win-x64"
+            throw "EXE not found in _publish/win-x64"
           }
 
           Compress-Archive -Path $exe.FullName -DestinationPath $zip -Force
@@ -85,13 +52,64 @@ jobs:
           $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           "SHA256  $zip  $sha" | Out-File SHA256.txt -Encoding ascii
 
-          Write-Host "Built: $zip"
-          Get-Content SHA256.txt
+          Write-Host "ZIP: $zip"
+          Write-Host "SHA256: $sha"
 
-      - name: Create GitHub Release + Upload assets
+      - name: Prepare release body from RELEASE_NOTES.md (strict)
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $notes = "RELEASE_NOTES.md"
+          $out = "release_body.md"
+
+          if (-not (Test-Path $notes)) {
+            throw "RELEASE_NOTES.md not found."
+          }
+
+          $lines = Get-Content $notes
+          $start = ($lines | Select-String -SimpleMatch "## $tag").LineNumber
+          if (-not $start) {
+            throw "Section not found: ## $tag"
+          }
+
+          $startIdx = $start - 1
+          $endIdx = $lines.Count
+          for ($i = $startIdx + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s+v\d+\.\d+\.\d+') {
+              $endIdx = $i
+              break
+            }
+          }
+
+          $section = $lines[$startIdx..($endIdx-1)] -join "`n"
+
+          if ($section -match '\(write here\)') {
+            throw "Placeholders '(write here)' remain in RELEASE_NOTES.md"
+          }
+
+          # 이전 태그 찾아 compare 링크 생성
+          git fetch --tags origin | Out-Null
+          $prev = (git tag --list "v*" --sort=-v:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1)
+
+          $repo = "${{ github.repository }}"
+          $header = @()
+
+          if ($prev) {
+            $header += "🔎 Compare: $prev → $tag"
+            $header += "https://github.com/$repo/compare/$prev...$tag"
+            $header += ""
+            $header += "---"
+            $header += ""
+          }
+
+          ($header -join "`n") + $section | Out-File $out -Encoding utf8
+          Write-Host "Release body prepared."
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             WinSxS-Cleanup-Tool-*.zip
             SHA256.txt
-          generate_release_notes: true
+          body_path: release_body.md
+          generate_release_notes: false

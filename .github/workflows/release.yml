@@ -3,38 +3,37 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
-
-permissions:
-  contents: write
+      - "v*"
 
 jobs:
-  build-and-release:
+  release:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # tags 포함
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
-      - name: Publish (single-file, self-contained)
+      - name: Restore
         shell: pwsh
         run: |
-          dotnet publish `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            -o .\_publish\win-x64 `
-            /p:PublishSingleFile=true `
-            /p:PublishTrimmed=false `
-            /p:IncludeNativeLibrariesForSelfExtract=true `
-            /p:EnableCompressionInSingleFile=true
+          dotnet restore
+
+      - name: Build (Release)
+        shell: pwsh
+        run: |
+          dotnet build -c Release --no-restore
+
+      - name: Run release.cmd
+        shell: cmd
+        run: |
+          cd /d "%GITHUB_WORKSPACE%"
+          dir
+          call .\release.cmd
 
       - name: Zip EXE + generate SHA256
         shell: pwsh

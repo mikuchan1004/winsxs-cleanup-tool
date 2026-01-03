@@ -11,34 +11,43 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish
+      - name: Publish (single-file exe)
+        shell: pwsh
         run: |
-          dotnet publish -c Release -r win-x64 --self-contained true `
+          dotnet publish `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
             /p:PublishSingleFile=true `
             /p:IncludeNativeLibrariesForSelfExtract=true `
             /p:EnableCompressionInSingleFile=true `
             -o dist
 
-      - name: Zip + SHA256
+      - name: Package ZIP + SHA256
         shell: pwsh
         run: |
-          $zip = "WinSxSCleanupTool-${{ github.ref_name }}.zip"
-          Compress-Archive dist\* $zip
-          Get-FileHash $zip -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash)  $zip" } |
-            Out-File "$zip.sha256" -Encoding ascii
+          $tag = "${{ github.ref_name }}"
+          $zip = "WinSxSCleanupTool-$tag-win-x64.zip"
 
-      - name: Create Release
+          Compress-Archive dist\* $zip -Force
+
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Out-File "$zip.sha256" -Encoding ascii
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             *.zip
             *.sha256
-          body_path: RELEASE_NOTES.md
+          generate_release_notes: true

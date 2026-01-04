@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/5b300fc80676441c30d134ef37154b4bb305ce1f53e6156fbfb05f058f776470
+https://www.virustotal.com/gui/file/cef37bb1ebd137fd2702739537affc8cb5b2527b97928ab8da80b34d91856749
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -21,7 +21,8 @@ DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유�
 > 🌐 네트워크 통신, 백그라운드 상주, 광고 등은 **일절 없습니다**.
 
 ---
-<img width="967" height="670" alt="스크린샷 2026-01-04 030016" src="https://github.com/user-attachments/assets/315595b7-f17b-482a-88d4-5a8b7dc58e9a" />
+
+<img width="969" height="673" alt="스크린샷 2026-01-04 172147" src="https://github.com/user-attachments/assets/e13ec169-0b07-450b-8685-27786620a8f8" />
 
 ## ✨ 주요 기능
 
@@ -123,10 +124,10 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ## 📜 Changelog (요약)
 
-### v1.0.8
-- Publish 구조 정리
-- Self-contained 배포 개선
-- 파일 구성 최소화
+### v1.0.9
+- UX 메시지 개선
+- 결과 요약 로그 추가
+- 로그 가독성 및 저장 방식 개선 
 
 ➡ 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
 

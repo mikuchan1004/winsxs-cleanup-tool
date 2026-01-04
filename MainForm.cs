@@ -1146,6 +1146,8 @@ namespace WinSxSCleanupTool
             // [==== 50.0% ====] 형태 제거 (공백/문자 다양성 허용)
             if (Regex.IsMatch(s, @"^\[[=\-\s]*\d{1,3}(\.\d+)?%[=\-\s]*\]$")) return false;
 
+            if (s.Contains("%") && s.Contains("[") && s.Contains("]") && s.Contains('=')) return false;
+
             // "50.0%" 같은 단독 퍼센트 줄 제거
             if (Regex.IsMatch(s, @"^\d{1,3}(\.\d+)?%$")) return false;
 

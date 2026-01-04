@@ -510,7 +510,7 @@ namespace WinSxSCleanupTool
                 }
 
                 UpdateSummaryLabels();
-                SetStatus("완료 (결과 요약을 확인하세요");
+                SetStatus("완료 (결과 요약을 확인하세요)");
                 SetProgressSafe(100);
             }
             catch (OperationCanceledException)
@@ -1165,7 +1165,7 @@ namespace WinSxSCleanupTool
             _fullLog.AppendLine(line);
 
             if (ShouldShowDismLineInUi(line))
-                Log(line); // 기존 UI 출력 함수 재사용
+                AppendLogLine(line); // 기존 UI 출력 함수 재사용
         }
 
         // (선택) UI 로그 자체도 너무 길어지면 앞부분을 잘라내기

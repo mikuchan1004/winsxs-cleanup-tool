@@ -260,7 +260,10 @@ namespace WinSxSCleanupTool
             _fallbackTimer = new System.Windows.Forms.Timer();
             _fallbackTimer.Interval = 250;
             _fallbackTimer.Tick += (_, __) => ProgressFallbackTick();
+
         }
+
+        private readonly StringBuilder _fullLog = new StringBuilder(256 * 1024);
 
         private string BuildTitle()
         {
@@ -335,7 +338,7 @@ namespace WinSxSCleanupTool
                         if (string.IsNullOrWhiteSpace(line)) return;
                         lines.Add(line);
                         UpdateProgressFromLine(line);
-                        Log(line);
+                        AddDismLine(line);
                     },
                     token);
 
@@ -456,7 +459,7 @@ namespace WinSxSCleanupTool
                     {
                         if (string.IsNullOrWhiteSpace(line)) return;
                         UpdateProgressFromLine(line);
-                        Log(line);
+                        AddDismLine(line);
                     },
                     token);
 
@@ -478,7 +481,7 @@ namespace WinSxSCleanupTool
                             if (string.IsNullOrWhiteSpace(line)) return;
                             analyzeLines.Add(line);
                             UpdateProgressFromLine(line);
-                            Log(line);
+                            AddDismLine(line);
                         },
                         token);
 
@@ -776,7 +779,7 @@ namespace WinSxSCleanupTool
 
             try
             {
-                File.WriteAllText(sfd.FileName, txtLog.Text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                File.WriteAllText(sfd.FileName, _fullLog.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
                 MessageBox.Show(
                     "로그 파일이 성공적으로 저장되었습니다.\n\n" +
                     "문제 발생 시, 이 로그 파일을 함께 전달해 주세요.",
@@ -1131,6 +1134,44 @@ namespace WinSxSCleanupTool
             btnResetBase.FlatAppearance.BorderColor = Color.FromArgb(140, 30, 30);
             btnResetBase.FlatAppearance.BorderSize = 1;
         }
+        // DISM 출력 라인을 UI에 표시할지 결정 (진행률/잡다한 헤더 제거)
+        private static bool ShouldShowDismLineInUi(string line)
+        {
+            var s = line.Trim();
+
+            // 진행률 바/퍼센트 반복 줄 제거 (네 로그에 보이던 그 막대들)
+            if (Regex.IsMatch(s, @"^\[=+.*\d+(\.\d+)?%.*\]$")) return false;
+            if (Regex.IsMatch(s, @"^\d+(\.\d+)?%$")) return false;
+
+            // DISM 헤더/군더더기(원하면 더 추가)
+            if (s.StartsWith("배포 이미지 서비스", StringComparison.OrdinalIgnoreCase)) return false;
+            if (s.StartsWith("Deployment Image Servicing", StringComparison.OrdinalIgnoreCase)) return false;
+            if (s.StartsWith("Version:", StringComparison.OrdinalIgnoreCase)) return false;
+            if (s.StartsWith("이미지 버전", StringComparison.OrdinalIgnoreCase)) return false;
+
+            return true;
+        }
+
+        // DISM 라인 기록: 전체 로그에는 저장, UI에는 필터링해서 표시
+        private void AddDismLine(string line)
+        {
+            _fullLog.AppendLine(line);
+
+            if (ShouldShowDismLineInUi(line))
+                Log(line); // 기존 UI 출력 함수 재사용
+        }
+
+        // (선택) UI 로그 자체도 너무 길어지면 앞부분을 잘라내기
+        private void TrimUiLogIfTooLong()
+        {
+            const int MaxChars = 60_000; // 대충 6만자 선에서 잘라내기
+            if (txtLog.TextLength <= MaxChars) return;
+
+            txtLog.Text = txtLog.Text.Substring(txtLog.TextLength - MaxChars);
+            txtLog.SelectionStart = txtLog.TextLength;
+            txtLog.ScrollToCaret();
+        }
+
     }
 
 }

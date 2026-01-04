@@ -3,8 +3,7 @@ name: Release (Windows x64)
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
+      - 'v*'
 
 permissions:
   contents: write
@@ -14,65 +13,69 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1️⃣ 소스 체크아웃
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2️⃣ .NET SDK 설정
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: '8.0.x'
 
-      - name: Clean
-        run: dotnet clean
-
-      - name: Publish (self-contained, single-file, ko only)
-        shell: cmd
-        run: >
-          dotnet publish WinSxSCleanupTool.csproj
-          -c Release
-          -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:EnableCompressionInSingleFile=true
-          -p:SatelliteResourceLanguages=ko
-          -o Publish
-
-      - name: Remove debug/doc junk
-        shell: cmd
-        run: >
-          del /q Publish\*.pdb 2>nul & del /q Publish\*.xml 2>nul
-
-      - name: Zip (Publish -> artifact)
+      # 3️⃣ 버전 정보 추출 (태그 강제)
+      - name: Extract version from tag
+        id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"      # v1.0.9
-          $ver = $tag.TrimStart('v')           # 1.0.9
-          $zip = "WinSxSCleanupTool_v$ver_win-x64.zip"
-          if (Test-Path $zip) { Remove-Item $zip -Force }
-          Compress-Archive -Path "Publish\*" -DestinationPath $zip -Force
-          "ZIP_NAME=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "APP_VER=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $tag = $env:GITHUB_REF_NAME
 
-      - name: Create GitHub Release (templated notes)
+          if (-not $tag.StartsWith("v")) {
+              Write-Error "This workflow must be triggered by a version tag (vX.Y.Z)"
+          }
+
+          $ver = $tag.TrimStart('v')
+          $zip = "WinSxSCleanupTool_v$ver_win-x64.zip"
+
+          Write-Host "Tag     : $tag"
+          Write-Host "Version : $ver"
+          Write-Host "ZIP     : $zip"
+
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+          echo "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      # 4️⃣ Publish (Self-contained, Single File)
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish WinSxSCleanupTool.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o publish
+
+      # 5️⃣ ZIP 생성 (버전 포함)
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          $zip = "${{ steps.version.outputs.zip }}"
+
+          if (Test-Path $zip) {
+              Remove-Item $zip -Force
+          }
+
+          Compress-Archive -Path publish\* -DestinationPath $zip
+
+          Write-Host "::notice::Created release asset: $zip"
+
+      # 6️⃣ GitHub Release 생성 + ZIP 업로드
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ZIP_NAME }}
-          name: WinSxS Cleanup Tool v${{ env.APP_VER }}
-          body: |
-            ## 🧹 WinSxS Cleanup Tool v${{ env.APP_VER }}
-
-            ### ✨ 개선 사항
-            - UX 메시지 개선
-            - 정리/분석 결과 요약 강조
-
-            ### 🛠 안정화
-            - Publish 구조 안정화
-            - Self-contained 배포 결과물 정리
-
-            ### 📦 배포 정보
-            - Windows x64
-            - .NET 런타임 불필요 (Self-contained)
-            - ZIP 배포
-
-            ---
-            📜 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: WinSxS Cleanup Tool ${{ steps.version.outputs.version }}
+          files: ${{ steps.version.outputs.zip }}
+          generate_release_notes: false

@@ -366,13 +366,11 @@ namespace WinSxSCleanupTool
                 else
                 {
                     Log(
-                        "✅ 분석이 완료되었습니다.\n" +
-                        "현재 추가로 정리할 항목이 없거나,\n" +
-                        "Windows가 정리 가능 정보를 제공하지 않았습니다.\n" +
-                        "정리 후 재분석으로 실제 절감량을 확인할 수 있습니다."
+                        "✅ 분석 완료 : 추가로 정리 가능한 항목이 없거나,\n" +
+                        "Windows에서 정리 가능 정보를 제공하지 않았습니다."                       
                     );
                 }
-
+                
                 if (_lastActualBeforeMB > 0)
                 {
                     Log($"ℹ 구성 요소 저장소 실제 크기(정리 전): {FormatMB(_lastActualBeforeMB)}");
@@ -507,13 +505,15 @@ namespace WinSxSCleanupTool
                         );
                     }
 
-                    LogSummaryBlock("정리 결과 요약");
-                    Log($"(Re-Analyze ExitCode: {analyzeExit})");
-                }
+                    UpdateSummaryLabels();
 
-                UpdateSummaryLabels();
-                LogSummaryBlock("정리 결과 요약");
-                SetStatus("완료 (결과 요약을 확인하세요)");
+                    // 🔽 기술 로그는 요약 전에
+                    Log($"(Re-Analyze ExitCode: {analyzeExit})");
+
+                    // 🔽 요약은 항상 맨 마지막
+                    LogSummaryBlock("정리 결과 요약");
+                    SetStatus("완료 (결과 요약을 확인하세요)");                   
+                }
                 SetProgressSafe(100);
             }
             catch (OperationCanceledException)
@@ -775,20 +775,21 @@ namespace WinSxSCleanupTool
             sb.AppendLine($" {title}");
             sb.AppendLine("--------------------------------------------------");
 
-            sb.AppendLine($" • 정리 전 WinSxS 크기 : " +
-                (_lastActualBeforeMB > 0 ? FormatMB(_lastActualBeforeMB) : "-"));
+            sb.AppendLine(" • 정리 전 WinSxS 크기 : " +
+                (_lastActualBeforeMB > 0 ? FormatMB(_lastActualBeforeMB) : "분석 필요"));
 
-            sb.AppendLine($" • 정리 후 WinSxS 크기 : " +
-                (_lastActualAfterMB > 0 ? FormatMB(_lastActualAfterMB) : "-"));
+            sb.AppendLine(" • 정리 후 WinSxS 크기 : " +
+                (_lastActualAfterMB > 0 ? FormatMB(_lastActualAfterMB) : "미측정"));
 
             if (_lastActualBeforeMB > 0 && _lastActualAfterMB > 0)
             {
                 var saved = _lastActualBeforeMB - _lastActualAfterMB;
-                sb.AppendLine($" • 실제 절감량         : {(saved > 0 ? FormatMB(saved) : "없음")}");
+                sb.AppendLine(" • 실제 절감량         : " +
+                    (saved > 0 ? FormatMB(saved) : "없음"));
             }
             else
             {
-                sb.AppendLine(" • 실제 절감량         : -");
+                sb.AppendLine(" • 실제 절감량         : 아직 계산되지 않음");
             }
 
             sb.AppendLine(" • 작업 결과           : 정상 완료");
@@ -797,6 +798,7 @@ namespace WinSxSCleanupTool
 
             Log(sb.ToString());
         }
+
 
 
         private void AppendLogLine(string line)
@@ -998,51 +1000,34 @@ namespace WinSxSCleanupTool
         // =========================
         private void UpdateSummaryLabels()
         {
-            // _lastUpperBoundMB: DISM이 제공하는 "백업 및 기능 사용 안 함(=정리 가능 상한)" 값
-            // 실제 절감량은 정리 전/후 Actual Size 비교로 계산됩니다.
-            string before = _lastActualBeforeMB > 0 ? FormatMB(_lastActualBeforeMB) : "-";
-            string after = _lastActualAfterMB > 0 ? FormatMB(_lastActualAfterMB) : "-";
+            // 정리 전
+            lblBefore.Text = _lastActualBeforeMB > 0
+                ? $"정리 전 WinSxS 크기 : {FormatMB(_lastActualBeforeMB)}"
+                : "정리 전 WinSxS 크기 : 분석 필요";
 
-            // 예상(상한 + 범위)
-            string expected = "-";
-            if (_lastUpperBoundMB > 0)
-            {
-                double low = _lastUpperBoundMB * 0.20; // 보수적 범위(경험치)
-                double high = _lastUpperBoundMB * 0.40;
+            // 정리 후
+            lblAfter.Text = _lastActualAfterMB > 0
+                ? $"정리 후 WinSxS 크기 : {FormatMB(_lastActualAfterMB)}"
+                : "정리 후 WinSxS 크기 : 미측정";
 
-                expected = $"{FormatMB(_lastUpperBoundMB)} (예상 {FormatMB(low)} ~ {FormatMB(high)})";
-            }
+            // 예상 절감량 (상한)
+            lblExpected.Text = _lastUpperBoundMB > 0
+                ? $"예상 절감량(상한) : {FormatMB(_lastUpperBoundMB)}"
+                : "예상 절감량(상한) : 미측정";
 
             // 실제 절감량
-            string saved = "-";
             if (_lastActualBeforeMB > 0 && _lastActualAfterMB > 0)
             {
-                double s = Math.Max(0, _lastActualBeforeMB - _lastActualAfterMB);
-                saved = $"{FormatMB(s)} (정리 전 {before} → 정리 후 {after})";
-            }
-
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() =>
-                {
-                    lblExpected.Text = $"정리 가능 상한: {expected}";
-                    lblBefore.Text = $"정리 전: {before}";
-                    lblAfter.Text = $"정리 후: {after}";
-                    lblSaved.Text = $"실제 절감량: {saved}";
-                    Text = BuildTitle();
-                }));
+                var saved = _lastActualBeforeMB - _lastActualAfterMB;
+                lblSaved.Text = saved > 0
+                    ? $"실제 절감량 : {FormatMB(saved)}"
+                    : "실제 절감량 : 없음";
             }
             else
             {
-                lblExpected.Text = $"정리 가능 상한: {expected}";
-                lblBefore.Text = $"정리 전: {before}";
-                lblAfter.Text = $"정리 후: {after}";
-                lblSaved.Text = $"실제 절감량: {saved}";
-                Text = BuildTitle();
+                lblSaved.Text = "실제 절감량 : 아직 계산되지 않음";
             }
         }
-
-
 
         // =========================
         // Settings JSON

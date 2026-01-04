@@ -357,6 +357,7 @@ namespace WinSxSCleanupTool
                 }
 
                 UpdateSummaryLabels();
+                LogSummaryBlock("분석 결과 요약");
 
                 if (_lastUpperBoundMB > 0)
                 {
@@ -366,9 +367,9 @@ namespace WinSxSCleanupTool
                 {
                     Log(
                         "✅ 분석이 완료되었습니다.\n" +
-                        "현재 시스템은 이미 최적화된 상태이거나,\n" +
-                        "Windows(DISM)가 정리 가능 상한 정보를 제공하지 않았습니다.\n" +
-                        "정리 후 재분석 옵션을 통해 실제 절감량을 확인할 수 있습니다."
+                        "현재 추가로 정리할 항목이 없거나,\n" +
+                        "Windows가 정리 가능 정보를 제공하지 않았습니다.\n" +
+                        "정리 후 재분석으로 실제 절감량을 확인할 수 있습니다."
                     );
                 }
 
@@ -506,10 +507,12 @@ namespace WinSxSCleanupTool
                         );
                     }
 
+                    LogSummaryBlock("정리 결과 요약");
                     Log($"(Re-Analyze ExitCode: {analyzeExit})");
                 }
 
                 UpdateSummaryLabels();
+                LogSummaryBlock("정리 결과 요약");
                 SetStatus("완료 (결과 요약을 확인하세요)");
                 SetProgressSafe(100);
             }
@@ -762,6 +765,39 @@ namespace WinSxSCleanupTool
                 AppendLogLine(line);
             }
         }
+
+        private void LogSummaryBlock(string title)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine();
+            sb.AppendLine("==================================================");
+            sb.AppendLine($" {title}");
+            sb.AppendLine("--------------------------------------------------");
+
+            sb.AppendLine($" • 정리 전 WinSxS 크기 : " +
+                (_lastActualBeforeMB > 0 ? FormatMB(_lastActualBeforeMB) : "-"));
+
+            sb.AppendLine($" • 정리 후 WinSxS 크기 : " +
+                (_lastActualAfterMB > 0 ? FormatMB(_lastActualAfterMB) : "-"));
+
+            if (_lastActualBeforeMB > 0 && _lastActualAfterMB > 0)
+            {
+                var saved = _lastActualBeforeMB - _lastActualAfterMB;
+                sb.AppendLine($" • 실제 절감량         : {(saved > 0 ? FormatMB(saved) : "없음")}");
+            }
+            else
+            {
+                sb.AppendLine(" • 실제 절감량         : -");
+            }
+
+            sb.AppendLine(" • 작업 결과           : 정상 완료");
+            sb.AppendLine("==================================================");
+            sb.AppendLine();
+
+            Log(sb.ToString());
+        }
+
 
         private void AppendLogLine(string line)
         {
@@ -1145,7 +1181,6 @@ namespace WinSxSCleanupTool
             // 진행률 바/퍼센트 반복 줄 제거 (네 로그에 보이던 그 막대들)
             // [==== 50.0% ====] 형태 제거 (공백/문자 다양성 허용)
             if (Regex.IsMatch(s, @"^\[[=\-\s]*\d{1,3}(\.\d+)?%[=\-\s]*\]$")) return false;
-
             if (s.Contains("%") && s.Contains("[") && s.Contains("]") && s.Contains('=')) return false;
 
             // "50.0%" 같은 단독 퍼센트 줄 제거

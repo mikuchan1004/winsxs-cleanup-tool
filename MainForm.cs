@@ -315,7 +315,7 @@ namespace WinSxSCleanupTool
             if (_isBusy) return;
 
             _lastUpperBoundMB = 0;
-            SetStatus("WinSxS 분석 중 (몇 분 소요될 수 있음");
+            SetStatus("WinSxS 분석 중 (몇 분 소요될 수 있음)");
             SetBusy(true);
 
             ResetProgressForRun();

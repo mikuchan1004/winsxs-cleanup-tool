@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/cef37bb1ebd137fd2702739537affc8cb5b2527b97928ab8da80b34d91856749
+https://www.virustotal.com/gui/file/ed56b14b43e86462508d14e6222fd3ab576c931c087f29927cd75e9b5f3cb163
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -22,7 +22,8 @@ DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유�
 
 ---
 
-<img width="969" height="673" alt="스크린샷 2026-01-04 172147" src="https://github.com/user-attachments/assets/e13ec169-0b07-450b-8685-27786620a8f8" />
+<img width="968" height="671" alt="스크린샷 2026-01-04 200748" src="https://github.com/user-attachments/assets/60b410e2-7d98-460c-b45a-6ff81f17b770" />
+
 
 ## ✨ 주요 기능
 
@@ -124,10 +125,10 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 ## 📜 Changelog (요약)
 
-### v1.0.9
-- UX 메시지 개선
-- 결과 요약 로그 추가
-- 로그 가독성 및 저장 방식 개선 
+### v1.1.0
+- 결과 요약 블록 추가
+- 예상 절감량 / 실제 절감량 상태를 명확한 문구로 표시
+- 계산 불가 상활에 대한 UX 메시지 정제
 
 ➡ 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
 

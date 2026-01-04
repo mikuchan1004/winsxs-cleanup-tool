@@ -749,6 +749,8 @@ namespace WinSxSCleanupTool
         // =========================
         private void Log(string msg)
         {
+
+            _fullLog.AppendLine(msg);
             string line = msg;
 
             if (InvokeRequired)
@@ -764,6 +766,7 @@ namespace WinSxSCleanupTool
         private void AppendLogLine(string line)
         {
             txtLog.AppendText(line + Environment.NewLine);
+            TrimUiLogIfTooLong();
         }
 
         private void SaveLog()
@@ -1140,8 +1143,12 @@ namespace WinSxSCleanupTool
             var s = line.Trim();
 
             // 진행률 바/퍼센트 반복 줄 제거 (네 로그에 보이던 그 막대들)
-            if (Regex.IsMatch(s, @"^\[=+.*\d+(\.\d+)?%.*\]$")) return false;
-            if (Regex.IsMatch(s, @"^\d+(\.\d+)?%$")) return false;
+            // [==== 50.0% ====] 형태 제거 (공백/문자 다양성 허용)
+            if (Regex.IsMatch(s, @"^\[[=\-\s]*\d{1,3}(\.\d+)?%[=\-\s]*\]$")) return false;
+
+            // "50.0%" 같은 단독 퍼센트 줄 제거
+            if (Regex.IsMatch(s, @"^\d{1,3}(\.\d+)?%$")) return false;
+
 
             // DISM 헤더/군더더기(원하면 더 추가)
             if (s.StartsWith("배포 이미지 서비스", StringComparison.OrdinalIgnoreCase)) return false;

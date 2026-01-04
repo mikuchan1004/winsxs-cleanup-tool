@@ -117,7 +117,7 @@ namespace WinSxSCleanupTool
 
             UpdateAdminUi();
             UpdateSummaryLabels();
-            SetStatus("대기");
+            SetStatus("대기 (작업을 선택해 주세요)");
 
             FormClosing += (_, __) => SaveSettingsSafe();
         }
@@ -315,7 +315,7 @@ namespace WinSxSCleanupTool
             if (_isBusy) return;
 
             _lastUpperBoundMB = 0;
-            SetStatus("분석");
+            SetStatus("WinSxS 분석 중 (몇 분 소요될 수 있음");
             SetBusy(true);
 
             ResetProgressForRun();
@@ -327,7 +327,7 @@ namespace WinSxSCleanupTool
 
             try
             {
-                Log("▶ WinSxS 분석 시작...");
+                Log("▶ WinSxS 구성 요소 저장소 분석을 시작합니다...");
                 int exitCode = await RunDismAsync(
                     "/Online /Cleanup-Image /AnalyzeComponentStore",
                     (line, isErr) =>
@@ -361,7 +361,12 @@ namespace WinSxSCleanupTool
                 }
                 else
                 {
-                    Log("✅ 분석은 완료되었습니다. 다만 Windows(DISM)가 '정리 가능 상한' 정보를 제공하지 않아 예상치를 표시할 수 없습니다. (정리 후 재분석으로 실제 절감량 확인 가능)");
+                    Log(
+                        "✅ 분석이 완료되었습니다.\n" +
+                        "현재 시스템은 이미 최적화된 상태이거나,\n" +
+                        "Windows(DISM)가 정리 가능 상한 정보를 제공하지 않았습니다.\n" +
+                        "정리 후 재분석 옵션을 통해 실제 절감량을 확인할 수 있습니다."
+                    );
                 }
 
                 if (_lastActualBeforeMB > 0)
@@ -404,8 +409,14 @@ namespace WinSxSCleanupTool
             UpdateAdminUi();
             if (!IsAdministrator())
             {
-                MessageBox.Show("정리/ResetBase는 관리자 권한이 필요합니다.\nVisual Studio(또는 exe)를 관리자 권한으로 실행해주세요.",
-                    "권한 필요", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+    "이 작업은 Windows 시스템 정리를 포함하므로\n" +
+    "관리자 권한이 필요합니다.\n\n" +
+    "관리자 권한으로 다시 실행해 주세요.",
+    "관리자 권한 필요",
+    MessageBoxButtons.OK,
+    MessageBoxIcon.Warning);
+
                 return;
             }
 
@@ -418,8 +429,14 @@ namespace WinSxSCleanupTool
             // 정리 전 값 (분석을 했으면 있음)
             double beforeMB = _lastActualBeforeMB;
 
-            Log(resetBase ? "▶ ResetBase 시작..." : "▶ 정리 시작...");
-            SetStatus(resetBase ? "ResetBase" : "정리");
+            Log(resetBase
+    ? "▶ ResetBase 정리를 시작합니다. (되돌릴 수 없음)"
+    : "▶ Windows 구성 요소 정리를 시작합니다...");
+
+            SetStatus(resetBase
+                ? "ResetBase 정리 진행 중"
+                : "Windows 정리 진행 중");
+
             SetBusy(true);
 
             ResetProgressForRun();
@@ -479,14 +496,18 @@ namespace WinSxSCleanupTool
                     }
                     else
                     {
-                        Log("⚠ 실제 절감량 계산 실패: 정리 전/후 '실제 크기' 정보가 충분하지 않습니다. (먼저 분석을 1회 실행해 주세요)");
+                        Log(
+                            "ℹ 정리는 정상적으로 완료되었습니다.\n" +
+                            "다만 비교를 위한 사전 분석 정보가 없어\n" +
+                            "이번 실행의 실제 절감량은 계산되지 않았습니다."
+                        );
                     }
 
                     Log($"(Re-Analyze ExitCode: {analyzeExit})");
                 }
 
                 UpdateSummaryLabels();
-                SetStatus("완료");
+                SetStatus("완료 (결과 요약을 확인하세요");
                 SetProgressSafe(100);
             }
             catch (OperationCanceledException)
@@ -756,7 +777,12 @@ namespace WinSxSCleanupTool
             try
             {
                 File.WriteAllText(sfd.FileName, txtLog.Text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-                MessageBox.Show("저장 완료!", "로그 저장", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "로그 파일이 성공적으로 저장되었습니다.\n\n" +
+                    "문제 발생 시, 이 로그 파일을 함께 전달해 주세요.",
+                    "로그 저장 완료",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {

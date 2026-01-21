@@ -842,11 +842,9 @@ namespace WinSxSCleanupTool
             Action<string, bool> onLine,   // bool: isError
             CancellationToken token)
         {
+            // DISM 출력은 환경에 따라 UTF-8 / OEM(예: CP949) / UTF-16(Unicode) 등으로 달라질 수 있음.
+            // - BOM/널바이트 패턴/UTF-8 유효성 기반으로 인코딩을 자동 판별해서 "한글 깨짐"을 최대한 방지한다.
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-            // DISM은 stdout/stderr 리다이렉트 시 UTF-16(Unicode)로 출력되는 경우가 많아
-            // OEM(CP949 등)으로 읽으면 한글이 깨질 수 있습니다.
-            var enc = Encoding.Unicode;
 
             var psi = new ProcessStartInfo
             {
@@ -855,40 +853,173 @@ namespace WinSxSCleanupTool
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true,
-                StandardOutputEncoding = enc,
-                StandardErrorEncoding = enc,
+                CreateNoWindow = true
+                // ⚠ StandardOutputEncoding/StandardErrorEncoding 지정하지 않음(바이트로 직접 디코드)
             };
 
-            using var p = new Process { StartInfo = psi };
+            using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
             p.Start();
 
-            // EndOfStream 경고 회피: ReadLineAsync null이면 종료
-            Task readStdOut = Task.Run(async () =>
+            async Task PumpStreamAsync(Stream stream, bool isErr)
             {
-                while (true)
-                {
-                    token.ThrowIfCancellationRequested();
-                    string? line = await p.StandardOutput.ReadLineAsync();
-                    if (line is null) break;
-                    onLine(line, false);
-                }
-            }, token);
+                // 1) 초기 버퍼로 인코딩 추정
+                const int sniffMax = 8192;
+                var initial = new List<byte>(sniffMax);
+                var buf = new byte[4096];
 
-            Task readStdErr = Task.Run(async () =>
+                int read;
+                while (initial.Count < sniffMax && (read = await stream.ReadAsync(buf, 0, Math.Min(buf.Length, sniffMax - initial.Count), token)) > 0)
+                {
+                    initial.AddRange(buf.AsSpan(0, read).ToArray());
+                    // 초반에 충분히 쌓이면(예: BOM/널패턴) 바로 판정 가능하지만 단순화를 위해 계속 누적
+                    if (initial.Count >= 512) break;
+                }
+
+                Encoding enc = GuessEncoding(initial);
+                var decoder = enc.GetDecoder();
+                var pending = new StringBuilder();
+
+                void EmitLinesFromPending()
+                {
+                    // \r\n / \n 모두 처리
+                    int idx;
+                    while ((idx = pending.ToString().IndexOf('\n')) >= 0)
+                    {
+                        string line = pending.ToString(0, idx);
+                        // CR 제거
+                        if (line.EndsWith("\r", StringComparison.Ordinal)) line = line[..^1];
+                        pending.Remove(0, idx + 1);
+                        if (line.Length > 0) onLine(line, isErr);
+                        else onLine(string.Empty, isErr);
+                    }
+                }
+
+                void FeedBytes(ReadOnlySpan<byte> bytes)
+                {
+                    if (bytes.Length == 0) return;
+
+                    // Decoder로 안전하게 char 변환
+                    int charCount = decoder.GetCharCount(bytes, flush: false);
+                    if (charCount == 0) return;
+
+                    var chars = new char[charCount];
+                    int written = decoder.GetChars(bytes, chars, flush: false);
+                    if (written > 0)
+                    {
+                        pending.Append(chars, 0, written);
+                        EmitLinesFromPending();
+                    }
+                }
+
+                // 2) 초기 바이트 처리
+                FeedBytes(initial.ToArray());
+
+                // 3) 나머지 스트림 처리
+                while ((read = await stream.ReadAsync(buf, 0, buf.Length, token)) > 0)
+                {
+                    FeedBytes(buf.AsSpan(0, read));
+                }
+
+                // 4) flush
+                int flushCount = decoder.GetCharCount(Array.Empty<byte>(), flush: true);
+                if (flushCount > 0)
+                {
+                    var flushChars = new char[flushCount];
+                    int fw = decoder.GetChars(Array.Empty<byte>(), flushChars, flush: true);
+                    if (fw > 0)
+                    {
+                        pending.Append(flushChars, 0, fw);
+                    }
+                }
+                // 남은 줄 방출
+                if (pending.Length > 0)
+                {
+                    // 마지막에 '\n'이 없을 수 있음
+                    string rest = pending.ToString();
+                    if (rest.EndsWith("\r", StringComparison.Ordinal)) rest = rest[..^1];
+                    onLine(rest, isErr);
+                    pending.Clear();
+                }
+
+                Encoding GuessEncoding(IReadOnlyList<byte> data)
+                {
+                    if (data.Count >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF) return Encoding.UTF8;
+                    if (data.Count >= 2 && data[0] == 0xFF && data[1] == 0xFE) return Encoding.Unicode;              // UTF-16LE
+                    if (data.Count >= 2 && data[0] == 0xFE && data[1] == 0xFF) return Encoding.BigEndianUnicode;      // UTF-16BE
+
+                    // UTF-16 패턴(널바이트가 짝/홀에 몰림) 감지
+                    int n = Math.Min(data.Count, 2048);
+                    int zeroEven = 0, zeroOdd = 0;
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (data[i] == 0)
+                        {
+                            if ((i & 1) == 0) zeroEven++;
+                            else zeroOdd++;
+                        }
+                    }
+                    // null 비율이 충분히 높으면 UTF-16로 판단
+                    // (LE: 홀수쪽이 0이 적고, 짝수쪽이 0이 많아지는 경향)
+                    if (n >= 64)
+                    {
+                        double ze = (double)zeroEven / n;
+                        double zo = (double)zeroOdd / n;
+                        if (ze > 0.12 && zo < 0.02) return Encoding.BigEndianUnicode;
+                        if (zo > 0.12 && ze < 0.02) return Encoding.Unicode;
+                        // 둘 다 높으면 그냥 Unicode로(대체로 LE)
+                        if (ze > 0.08 && zo > 0.08) return Encoding.Unicode;
+                    }
+
+                    // UTF-8 유효성 검사
+                    if (LooksLikeUtf8(data)) return Encoding.UTF8;
+
+                    // 기본: 콘솔 OEM(대개 CP949) → 그래도 안 맞으면 Encoding.Default
+                    try { return GetConsoleOemEncoding(); }
+                    catch { return Encoding.Default; }
+                }
+
+                static bool LooksLikeUtf8(IReadOnlyList<byte> data)
+                {
+                    int i = 0;
+                    int n = data.Count;
+                    while (i < n)
+                    {
+                        byte b = data[i];
+                        if (b <= 0x7F) { i++; continue; }
+
+                        int need =
+                            (b & 0xE0) == 0xC0 ? 1 :
+                            (b & 0xF0) == 0xE0 ? 2 :
+                            (b & 0xF8) == 0xF0 ? 3 : -1;
+
+                        if (need < 0) return false;
+                        if (i + need >= n) break; // 끝부분은 모자랄 수 있으니 true로 둠
+
+                        for (int k = 1; k <= need; k++)
+                        {
+                            byte c = data[i + k];
+                            if ((c & 0xC0) != 0x80) return false;
+                        }
+                        i += need + 1;
+                    }
+                    return true;
+                }
+            }
+
+            Task tOut = PumpStreamAsync(p.StandardOutput.BaseStream, isErr: false);
+            Task tErr = PumpStreamAsync(p.StandardError.BaseStream, isErr: true);
+
+            // 취소 지원
+            using (token.Register(() =>
             {
-                while (true)
-                {
-                    token.ThrowIfCancellationRequested();
-                    string? line = await p.StandardError.ReadLineAsync();
-                    if (line is null) break;
-                    onLine(line, true);
-                }
-            }, token);
-
-            await Task.WhenAll(readStdOut, readStdErr, p.WaitForExitAsync(token));
-            return p.ExitCode;
+                try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
+            }))
+            {
+                await Task.WhenAll(tOut, tErr);
+                await p.WaitForExitAsync(token);
+                return p.ExitCode;
+            }
         }
 
         private static Encoding GetConsoleOemEncoding()
@@ -1181,9 +1312,6 @@ namespace WinSxSCleanupTool
             if (s.StartsWith("Deployment Image Servicing", StringComparison.OrdinalIgnoreCase)) return false;
             if (s.StartsWith("Version:", StringComparison.OrdinalIgnoreCase)) return false;
             if (s.StartsWith("이미지 버전", StringComparison.OrdinalIgnoreCase)) return false;
-
-            // 진행률 바( [==== 12.3% ====] ) 같은 라인은 UI에서 숨김
-            if (s.StartsWith("[") && s.EndsWith("]") && s.Contains('%')) return false;
 
             return true;
         }

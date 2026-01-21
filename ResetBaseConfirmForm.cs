@@ -1,98 +1,167 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-public class ResetBaseConfirmForm : Form
+namespace WinSxSCleanupTool
 {
-    private CheckBox chk;
-    private Button btnOk;
-    private Button btnCancel;
-
-    public ResetBaseConfirmForm(string versionText)
+    public sealed class ResetBaseConfirmForm : Form
     {
-        Text = "ResetBase 확인";
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ShowInTaskbar = false;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        Padding = new Padding(14);
+        private readonly Label _lblTitle;
+        private readonly Label _lblDesc;
+        private readonly CheckBox _chk;
+        private readonly Button _btnOk;
+        private readonly Button _btnCancel;
 
-        var title = new Label
+        private readonly System.Windows.Forms.Timer _timer;
+        private int _secondsLeft;
+
+        public ResetBaseConfirmForm() : this(versionText: null) { }
+
+        public ResetBaseConfirmForm(string? versionText)
         {
-            AutoSize = true,
-            Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
-            Text = $"ResetBase는 되돌릴 수 없습니다.\r\n(버전: {versionText})",
-            MaximumSize = new Size(460, 0),
-        };
+            Text = UiText.ResetBaseFinalTitle;
+            StartPosition = FormStartPosition.CenterParent;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            ShowInTaskbar = false;
 
-        var desc = new Label
+            AutoSize = true;
+            AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            Padding = new Padding(14);
+
+            _lblTitle = new Label
+            {
+                AutoSize = true,
+                Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold),
+                MaximumSize = new Size(520, 0),
+                Text = BuildTitle(versionText),
+            };
+
+            _lblDesc = new Label
+            {
+                AutoSize = true,
+                MaximumSize = new Size(520, 0),
+                Text = UiText.ResetBaseFinalMessage,
+            };
+
+            _chk = new CheckBox
+            {
+                AutoSize = true,
+                Text = UiText.ResetBaseConfirmCheck,
+            };
+
+            _btnOk = new Button
+            {
+                Text = UiText.ResetBaseExecuteButtonText,
+                DialogResult = DialogResult.OK,
+                Enabled = false,
+                AutoSize = true,
+                Padding = new Padding(10, 6, 10, 6),
+            };
+
+            _btnCancel = new Button
+            {
+                Text = UiText.CancelButtonText,
+                DialogResult = DialogResult.Cancel,
+                AutoSize = true,
+                Padding = new Padding(10, 6, 10, 6),
+            };
+
+            AcceptButton = _btnOk;
+            CancelButton = _btnCancel;
+            Shown += (_, __) => _btnCancel.Focus(); // 안전: 취소에 포커스
+
+            var buttonRow = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                WrapContents = false,
+                Padding = new Padding(0, 8, 0, 0),
+            };
+            buttonRow.Controls.Add(_btnCancel);
+            buttonRow.Controls.Add(_btnOk);
+
+            var layout = new TableLayoutPanel
+            {
+                AutoSize = true,
+                ColumnCount = 1,
+                RowCount = 4,
+                Dock = DockStyle.Fill,
+            };
+            layout.Controls.Add(_lblTitle, 0, 0);
+            layout.Controls.Add(_lblDesc, 0, 1);
+            layout.Controls.Add(_chk, 0, 2);
+            layout.Controls.Add(buttonRow, 0, 3);
+
+            Controls.Add(layout);
+
+            _secondsLeft = 3;
+            _timer = new System.Windows.Forms.Timer { Interval = 1000 };
+            _timer.Tick += (_, __) =>
+            {
+                _secondsLeft--;
+                UpdateOkState();
+
+                if (_secondsLeft <= 0)
+                {
+                    _timer.Stop();
+                    UpdateOkState();
+                }
+            };
+
+            _chk.CheckedChanged += (_, __) =>
+            {
+                if (_chk.Checked)
+                {
+                    _secondsLeft = 3;
+                    _timer.Stop();
+                    _timer.Start();
+                }
+                else
+                {
+                    _timer.Stop();
+                }
+                UpdateOkState();
+            };
+
+            FormClosed += (_, __) =>
+            {
+                _timer.Stop();
+                _timer.Dispose();
+            };
+
+            UpdateOkState();
+        }
+
+        private static string BuildTitle(string? versionText)
         {
-            AutoSize = true,
-            Text =
-                "• 정리 후, 업데이트/패치 되돌리기가 어려워질 수 있습니다.\r\n" +
-                "• 문제가 생겨도 복구가 힘들 수 있습니다.\r\n\r\n" +
-                "그래도 실행하려면 아래를 체크하고 진행하세요.",
-            MaximumSize = new Size(460, 0),
-        };
+            if (string.IsNullOrWhiteSpace(versionText))
+                return "ResetBase는 되돌릴 수 없습니다.";
+            return $"ResetBase는 되돌릴 수 없습니다.\r\n(버전: {versionText})";
+        }
 
-        chk = new CheckBox
+        private void UpdateOkState()
         {
-            AutoSize = true,
-            Text = "위 내용을 이해했으며, ResetBase를 실행하겠습니다.",
-        };
+            if (!_chk.Checked)
+            {
+                _btnOk.Enabled = false;
+                _btnOk.Text = UiText.ResetBaseExecuteButtonText;
+                return;
+            }
 
-        btnOk = new Button
-        {
-            Text = "ResetBase 실행",
-            DialogResult = DialogResult.OK,
-            Enabled = false,
-            BackColor = Color.FromArgb(180, 50, 50),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            UseVisualStyleBackColor = false,
-            AutoSize = true,
-            Padding = new Padding(10, 6, 10, 6),
-        };
+            if (_timer.Enabled && _secondsLeft > 0)
+            {
+                _btnOk.Enabled = false;
+                _btnOk.Text = $"{UiText.ResetBaseExecuteButtonText} ({_secondsLeft})";
+                return;
+            }
 
-        btnCancel = new Button
-        {
-            Text = "취소",
-            DialogResult = DialogResult.Cancel,
-            AutoSize = true,
-            Padding = new Padding(10, 6, 10, 6),
-        };
-
-        chk.CheckedChanged += (_, __) => btnOk.Enabled = chk.Checked;
-
-        var buttons = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.RightToLeft,
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            WrapContents = false,
-            Padding = new Padding(0, 8, 0, 0),
-        };
-        buttons.Controls.Add(btnCancel);
-        buttons.Controls.Add(btnOk);
-
-        var layout = new TableLayoutPanel
-        {
-            AutoSize = true,
-            ColumnCount = 1,
-            RowCount = 4,
-            Dock = DockStyle.Fill,
-        };
-        layout.Controls.Add(title, 0, 0);
-        layout.Controls.Add(desc, 0, 1);
-        layout.Controls.Add(chk, 0, 2);
-        layout.Controls.Add(buttons, 0, 3);
-
-        Controls.Add(layout);
-
-        AcceptButton = btnOk;
-        CancelButton = btnCancel;
+            _btnOk.Enabled = true;
+            _btnOk.Text = UiText.ResetBaseExecuteButtonText;
+        }
     }
 }

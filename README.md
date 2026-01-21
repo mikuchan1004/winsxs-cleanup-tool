@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/ed56b14b43e86462508d14e6222fd3ab576c931c087f29927cd75e9b5f3cb163
+https://www.virustotal.com/gui/file/9ed5bfe250b72ff7fdf4237b24f13a765b6d2f36f52e7ffa85c84e8a077dbce7
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -22,7 +22,7 @@ DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유�
 
 ---
 
-<img width="968" height="671" alt="스크린샷 2026-01-04 200748" src="https://github.com/user-attachments/assets/60b410e2-7d98-460c-b45a-6ff81f17b770" />
+<img width="963" height="680" alt="스크린샷 2026-01-22 015406" src="https://github.com/user-attachments/assets/a2b5d606-c03e-4cd0-8d41-28552cf9e691" />
 
 
 ## ✨ 주요 기능

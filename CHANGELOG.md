@@ -1,3 +1,17 @@
+## [Unreleased]
+
+### Added
+- ResetBase 실행 전 추가 확인 절차
+
+### Changed
+- 사용자 안내 문구 가독성 개선
+
+### Fixed
+- 일부 상황에서 결과 메시지가 모호하던 문제
+
+### Security
+- ResetBase 관련 위험성 안내 강화
+
 # 📜 Changelog
 
 이 문서는 **WinSxS Cleanup Tool**의 모든 주요 변경 사항을 기록합니다.  

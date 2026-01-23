@@ -1,14 +1,9 @@
-﻿// MainForm.cs (최종 통합본, 경고 0개 목표)
-// - 상단 요약 카드(예상/정리 전/정리 후/실제 절감량)
-// - 관리자 권한 표시(ADMIN 배지 + 비관리자 시 정리/ResetBase 비활성)
-// - ResetBase 2단 확인(카운트다운으로 확인 버튼 활성)
-// - 로그 저장 버튼(UTF-8)
-// - 진행률 % 연동 + Fallback 타이머(진행률이 안 올라갈 때 부드럽게 전진)
-// - 정리 후 재분석 체크박스(실제 절감량 계산)
-// - GitHub 링크
-// - 설정 저장(JSON): 창 위치/크기 + 체크박스
-// - 콘솔 출력 인코딩(Windows OEM 코드페이지)로 글자 깨짐 방지
-// - 아이콘: EXE에 내장된 아이콘을 폼에 그대로 적용(ExtractAssociatedIcon)
+﻿// MainForm.cs (UI 수정 + 색상 패치 통합본)
+// - 버튼 정렬(취소 분리 / ResetBase 간격)
+// - 우측 패널(ADMIN/로그저장/링크) 정렬 개선
+// - 요약 카드 값 색상(측정/미측정/절감량) 반영
+// - ResetBase 확인 흐름: 1차 경고(MessageBox) + 2차(ResetBaseConfirmForm)
+// - 로그 자동 스크롤, 상태 강조, 진행률 Fallback 유지
 
 #nullable enable
 
@@ -65,17 +60,19 @@ namespace WinSxSCleanupTool
 
         private CheckBox chkReAnalyze = null!;
         private LinkLabel linkGitHub = null!;
+        private LinkLabel linkAbout = null!;
         private Label lblAdminBadge = null!;
 
         private GroupBox grpSummary = null!;
-        private Label lblExpected = null!;
-        private Label lblBefore = null!;
-        private Label lblAfter = null!;
-        private Label lblSaved = null!;
+        private Label valExpected = null!;
+        private Label valSaved = null!;
+        private Label valBefore = null!;
+        private Label valAfter = null!;
 
         private Label lblStatus = null!;
         private ProgressBar progress = null!;
         private TextBox txtLog = null!;
+        private ToolTip _tt = null!;
 
         // =========================
         // State
@@ -91,8 +88,10 @@ namespace WinSxSCleanupTool
         private int _lastProgressValue;
         private bool _progressHadRealPercent;
 
-        // Fallback timer (명시적으로 WinForms Timer 사용)
+        // Fallback timer
         private System.Windows.Forms.Timer _fallbackTimer = null!;
+
+        private readonly StringBuilder _fullLog = new StringBuilder(256 * 1024);
 
         // =========================
         // Ctor
@@ -108,7 +107,7 @@ namespace WinSxSCleanupTool
             // 폼 아이콘: EXE에 박힌 아이콘을 그대로 사용 (가장 안정적)
             try
             {
-                Icon = Icon.ExtractAssociatedIcon(System.Windows.Forms.Application.ExecutablePath) ?? Icon;
+                Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? Icon;
             }
             catch
             {
@@ -116,118 +115,259 @@ namespace WinSxSCleanupTool
             }
 
             UpdateAdminUi();
-            UpdateSummaryLabels();
-            SetStatus("대기 (작업을 선택해 주세요)");
+            UpdateSummaryCards();
+            SetStatus(UiText.AppReadyStatus);
 
             FormClosing += (_, __) => SaveSettingsSafe();
         }
 
         // =========================
-        // Initialize UI
+        // Initialize UI (Layout-first)
         // =========================
-
         private void InitializeComponent()
         {
             Text = BuildTitle();
-            Width = 980;
-            Height = 680;
             StartPosition = FormStartPosition.CenterScreen;
+            MinimumSize = new Size(860, 560);
 
-            btnAnalyze = new Button { Text = "분석", Left = 12, Top = 12, Width = 110, Height = 34 };
-            btnCleanup = new Button { Text = "정리", Left = 128, Top = 12, Width = 110, Height = 34 };
-            btnResetBase = new Button { Text = "ResetBase", Left = 244, Top = 12, Width = 120, Height = 34 };
-            btnCancel = new Button { Text = "취소", Left = 370, Top = 12, Width = 110, Height = 34, Enabled = false };
+            Font = new Font("Segoe UI", 9F);
+            Padding = new Padding(12);
+
+            _tt = new ToolTip
+            {
+                AutoPopDelay = 9000,
+                InitialDelay = 400,
+                ReshowDelay = 200,
+                ShowAlways = true
+            };
+
+            // Root layout
+            var root = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 5
+            };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // toolbar
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // option row
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // summary
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // status+progress
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // log
+
+            // Toolbar: left actions + right panel
+            var toolbar = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                ColumnCount = 2,
+                AutoSize = true
+            };
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            // Left area: actions row + cancel row
+            var leftArea = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                AutoSize = true
+            };
+            leftArea.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            leftArea.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            var actionRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+
+            var cancelRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0, 6, 0, 0),
+                Padding = new Padding(0)
+            };
+
+            btnAnalyze = MakeButton("분석", AnalyzeAsync);
+            btnCleanup = MakeButton("정리", () => CleanupAsync(resetBase: false));
+            btnResetBase = MakeButton("ResetBase", () => CleanupAsync(resetBase: true));
+            btnCancel = MakeButton("취소", () => _cts?.Cancel());
+            btnCancel.Enabled = false;
+
+            // ✅ ResetBase 버튼은 의도적으로 간격을 둬서(사고 방지 UX)
+            btnResetBase.Margin = new Padding(16, 0, 8, 0);
+
+            actionRow.Controls.AddRange(new Control[] { btnAnalyze, btnCleanup, btnResetBase });
+            cancelRow.Controls.Add(btnCancel);
+
+            leftArea.Controls.Add(actionRow, 0, 0);
+            leftArea.Controls.Add(cancelRow, 0, 1);
+
+            // Right panel: ADMIN + Log + Links (정렬 고정)
+            var rightPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.TopDown,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
 
             lblAdminBadge = new Label
             {
                 Text = "ADMIN",
-                Left = 820,
-                Top = 12,
+                AutoSize = false,
                 Width = 140,
                 Height = 34,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 BackColor = Color.FromArgb(30, 140, 30),
-                ForeColor = Color.White
+                ForeColor = Color.White,
+                Margin = new Padding(0, 0, 0, 8)
             };
 
-            btnSaveLog = new Button { Text = "로그 저장", Left = 820, Top = 52, Width = 140, Height = 30 };
-
-            linkGitHub = new LinkLabel
+            btnSaveLog = new Button
             {
-                Text = "GitHub",
-                Left = 900,
-                Top = 88,
-                Width = 60,
-                Height = 20,
-                TextAlign = ContentAlignment.MiddleRight
+                Text = "로그 저장",
+                Width = 140,
+                Height = 30,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnSaveLog.Click += (_, __) => SaveLog();
+
+            var linkRow = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
 
-            var linkAbout = new LinkLabel
-            {
-                Text = "About",
-                Left = linkGitHub.Left - 60,
-                Top = linkGitHub.Top,
-                Width = 55,
-                Height = 20,
-                TextAlign = ContentAlignment.MiddleRight
-            };
+            linkAbout = new LinkLabel { Text = "About", AutoSize = true, Margin = new Padding(0, 0, 10, 0) };
+            linkGitHub = new LinkLabel { Text = "GitHub", AutoSize = true, Margin = new Padding(0, 0, 0, 0) };
+
             linkAbout.LinkClicked += (_, __) => ShowAbout();
+            linkGitHub.LinkClicked += (_, __) => OpenUrl(GitHubUrl);
 
-            Controls.Add(linkAbout);
+            linkRow.Controls.Add(linkAbout);
+            linkRow.Controls.Add(linkGitHub);
 
-            // GitHub
-            linkGitHub.TextAlign = ContentAlignment.MiddleRight;
+            rightPanel.Controls.Add(lblAdminBadge);
+            rightPanel.Controls.Add(btnSaveLog);
+            rightPanel.Controls.Add(linkRow);
 
-            // About (GitHub 왼쪽에 딱 붙이기)
-            linkAbout.Left = linkGitHub.Left - linkAbout.Width - 8;
-            linkAbout.TextAlign = ContentAlignment.MiddleRight;
+            toolbar.Controls.Add(leftArea, 0, 0);
+            toolbar.Controls.Add(rightPanel, 1, 0);
+
+            // Option row
+            var optRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0, 8, 0, 0)
+            };
 
             chkReAnalyze = new CheckBox
             {
                 Text = "정리 후 재분석 (실제 절감량 계산)",
-                Left = 12,
-                Top = 56,
-                Width = 360,
-                Height = 24,
+                AutoSize = true,
                 Checked = _settings.ReAnalyzeAfterCleanup
             };
+            chkReAnalyze.CheckedChanged += (_, __) =>
+            {
+                _settings.ReAnalyzeAfterCleanup = chkReAnalyze.Checked;
+                SaveSettingsSafe();
+            };
 
+            optRow.Controls.Add(chkReAnalyze);
+
+            // Summary (2x2 cards)
             grpSummary = new GroupBox
             {
                 Text = "요약",
-                Left = 12,
-                Top = 84,
-                Width = 948,
-                Height = 90
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(10),
+                Margin = new Padding(0, 8, 0, 0)
             };
 
-            lblExpected = new Label { Left = 12, Top = 24, Width = 450, Height = 22 };
-            lblBefore = new Label { Left = 12, Top = 48, Width = 450, Height = 22 };
-            lblAfter = new Label { Left = 480, Top = 48, Width = 450, Height = 22 };
-            lblSaved = new Label { Left = 480, Top = 24, Width = 450, Height = 22 };
+            var summaryGrid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2,
+                AutoSize = true
+            };
+            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            summaryGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            summaryGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            grpSummary.Controls.AddRange(new Control[] { lblExpected, lblSaved, lblBefore, lblAfter });
+            var c00 = MakeSummaryCard("예상 절감량(상한)", out valExpected);
+            var c01 = MakeSummaryCard("실제 절감량", out valSaved);
+            var c10 = MakeSummaryCard("정리 전 WinSxS 크기", out valBefore);
+            var c11 = MakeSummaryCard("정리 후 WinSxS 크기", out valAfter);
 
-            lblStatus = new Label { Text = "상태: -", Left = 12, Top = 178, Width = 700, Height = 24 };
+            // ✅ 카드 간격: 오른쪽 컬럼은 우측 마진 0
+            c00.Margin = new Padding(0, 0, 10, 10);
+            c01.Margin = new Padding(0, 0, 0, 10);
+            c10.Margin = new Padding(0, 0, 10, 0);
+            c11.Margin = new Padding(0, 0, 0, 0);
+
+            summaryGrid.Controls.Add(c00, 0, 0);
+            summaryGrid.Controls.Add(c01, 1, 0);
+            summaryGrid.Controls.Add(c10, 0, 1);
+            summaryGrid.Controls.Add(c11, 1, 1);
+
+            grpSummary.Controls.Add(summaryGrid);
+
+            // Status + progress
+            var statusPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                ColumnCount = 1,
+                RowCount = 2,
+                AutoSize = true,
+                Margin = new Padding(0, 8, 0, 0)
+            };
+            statusPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            statusPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            lblStatus = new Label
+            {
+                Text = "상태: -",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, 6)
+            };
 
             progress = new ProgressBar
             {
-                Left = 12,
-                Top = 206,
-                Width = 948,
+                Dock = DockStyle.Top,
                 Height = 18,
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0
             };
 
+            statusPanel.Controls.Add(lblStatus, 0, 0);
+            statusPanel.Controls.Add(progress, 0, 1);
+
+            // Log
             txtLog = new TextBox
             {
-                Left = 12,
-                Top = 232,
-                Width = 948,
-                Height = 400,
+                Dock = DockStyle.Fill,
                 Multiline = true,
                 ScrollBars = ScrollBars.Vertical,
                 ReadOnly = true,
@@ -235,35 +375,95 @@ namespace WinSxSCleanupTool
                 WordWrap = false
             };
 
-            Controls.AddRange(new Control[]
-            {
-                btnAnalyze, btnCleanup, btnResetBase, btnCancel,
-                lblAdminBadge, btnSaveLog, linkGitHub,
-                chkReAnalyze, grpSummary, lblStatus, progress, txtLog
-            });
+            // Root add
+            root.Controls.Add(toolbar, 0, 0);
+            root.Controls.Add(optRow, 0, 1);
+            root.Controls.Add(grpSummary, 0, 2);
+            root.Controls.Add(statusPanel, 0, 3);
+            root.Controls.Add(txtLog, 0, 4);
 
-            btnAnalyze.Click += async (_, __) => await AnalyzeAsync();
-            btnCleanup.Click += async (_, __) => await CleanupAsync(resetBase: false);
-            btnResetBase.Click += async (_, __) => await CleanupAsync(resetBase: true);
+            Controls.Add(root);
 
-            btnCancel.Click += (_, __) => _cts?.Cancel();
-            btnSaveLog.Click += (_, __) => SaveLog();
-            linkGitHub.LinkClicked += (_, __) => OpenUrl(GitHubUrl);
-
-            chkReAnalyze.CheckedChanged += (_, __) =>
-            {
-                _settings.ReAnalyzeAfterCleanup = chkReAnalyze.Checked;
-                SaveSettingsSafe();
-            };
+            // Tooltips
+            _tt.SetToolTip(btnAnalyze, "WinSxS 분석(권장): 예상 절감량/정리 전후 비교 정보를 가져옵니다.");
+            _tt.SetToolTip(btnCleanup, "Windows 구성 요소 정리(안전): 일반 정리 작업입니다.");
+            _tt.SetToolTip(btnResetBase, "ResetBase(위험): 업데이트 제거/롤백이 불가해질 수 있습니다.");
+            _tt.SetToolTip(btnCancel, "현재 실행 중인 작업을 취소합니다.");
+            _tt.SetToolTip(btnSaveLog, "현재 로그를 텍스트 파일로 저장합니다.");
+            _tt.SetToolTip(chkReAnalyze, "정리 후 다시 분석하여 실제 절감량을 계산합니다.");
 
             // Fallback timer
-            _fallbackTimer = new System.Windows.Forms.Timer();
-            _fallbackTimer.Interval = 250;
+            _fallbackTimer = new System.Windows.Forms.Timer { Interval = 250 };
             _fallbackTimer.Tick += (_, __) => ProgressFallbackTick();
 
+            UpdateAdminUi();
+            UpdateSummaryCards();
+            SetStatus(UiText.AppReadyStatus);
         }
 
-        private readonly StringBuilder _fullLog = new StringBuilder(256 * 1024);
+        // ✅ 비동기 버튼
+        private Button MakeButton(string text, Func<Task> onClickAsync)
+        {
+            var b = new Button
+            {
+                Text = text,
+                AutoSize = true,
+                Padding = new Padding(12, 6, 12, 6),
+                Margin = new Padding(0, 0, 8, 0)
+            };
+
+            b.Click += async (_, __) => await onClickAsync();
+            return b;
+        }
+
+        // ✅ 동기 버튼
+        private Button MakeButton(string text, Action onClick)
+        {
+            var b = new Button
+            {
+                Text = text,
+                AutoSize = true,
+                Padding = new Padding(12, 6, 12, 6),
+                Margin = new Padding(0, 0, 8, 0)
+            };
+
+            b.Click += (_, __) => onClick();
+            return b;
+        }
+
+        private Control MakeSummaryCard(string title, out Label valueLabel)
+        {
+            var panel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(10),
+                MinimumSize = new Size(240, 62)
+            };
+
+            var t = new Label
+            {
+                Text = title,
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                ForeColor = Color.DimGray,
+                Dock = DockStyle.Top
+            };
+
+            valueLabel = new Label
+            {
+                Text = "-",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 6, 0, 0)
+            };
+
+            panel.Controls.Add(valueLabel);
+            panel.Controls.Add(t);
+
+            return panel;
+        }
 
         private string BuildTitle()
         {
@@ -318,7 +518,7 @@ namespace WinSxSCleanupTool
             if (_isBusy) return;
 
             _lastUpperBoundMB = 0;
-            SetStatus("WinSxS 분석 중 (몇 분 소요될 수 있음)");
+            SetStatus(UiText.AnalyzeRunningStatus);
             SetBusy(true);
 
             ResetProgressForRun();
@@ -356,7 +556,7 @@ namespace WinSxSCleanupTool
                     _lastActualBeforeMB = ConvertSizeToMB(actualText);
                 }
 
-                UpdateSummaryLabels();
+                UpdateSummaryCards();
                 LogSummaryBlock("분석 결과 요약");
 
                 if (_lastUpperBoundMB > 0)
@@ -365,10 +565,7 @@ namespace WinSxSCleanupTool
                 }
                 else
                 {
-                    Log(
-                        "✅ 분석 완료 : 추가로 정리 가능한 항목이 없거나,\n" +
-                        "Windows에서 정리 가능 정보를 제공하지 않았습니다."
-                    );
+                    Log("✅ 분석 완료: 추가 정리 가능 항목이 없거나, Windows가 정리 가능 정보를 제공하지 않았습니다.");
                 }
 
                 if (_lastActualBeforeMB > 0)
@@ -377,19 +574,19 @@ namespace WinSxSCleanupTool
                 }
 
                 Log($"(ExitCode: {exitCode})");
-                SetStatus("완료");
+                SetStatus(UiText.CompletedStatus);
                 SetProgressSafe(100);
             }
             catch (OperationCanceledException)
             {
                 Log("⛔ 작업이 취소되었습니다.");
-                SetStatus("취소됨");
+                SetStatus(UiText.CanceledStatus);
                 SetProgressSafe(0);
             }
             catch (Exception ex)
             {
                 Log("❌ 오류: " + ex);
-                SetStatus("오류");
+                SetStatus(UiText.ErrorStatus);
                 SetProgressSafe(0);
                 MessageBox.Show(ex.ToString(), "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -412,35 +609,42 @@ namespace WinSxSCleanupTool
             if (!IsAdministrator())
             {
                 MessageBox.Show(
-    "이 작업은 Windows 시스템 정리를 포함하므로\n" +
-    "관리자 권한이 필요합니다.\n\n" +
-    "관리자 권한으로 다시 실행해 주세요.",
-    "관리자 권한 필요",
-    MessageBoxButtons.OK,
-    MessageBoxIcon.Warning);
+                    UiText.AdminRequiredMessage,
+                    UiText.AdminRequiredTitle,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
 
                 return;
             }
 
+            // UX: 분석 없이 정리 시 안내(ResetBase 제외)
+            if (!resetBase && _lastActualBeforeMB <= 0 && _lastUpperBoundMB <= 0)
+            {
+                var r = MessageBox.Show(
+                    UiText.CleanupWithoutAnalyzeMessage,
+                    UiText.CleanupWithoutAnalyzeTitle,
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (r != DialogResult.Yes) return;
+            }
+
             if (resetBase)
             {
-                bool ok = await ShowResetBaseTwoStepConfirmAsync();
+                bool ok = ShowResetBaseConfirmFlow();
                 if (!ok) return;
             }
 
             // 정리 전 값 (분석을 했으면 있음)
             double beforeMB = _lastActualBeforeMB;
 
-            Log(resetBase
-    ? "▶ ResetBase 정리를 시작합니다. (되돌릴 수 없음)"
-    : "▶ Windows 구성 요소 정리를 시작합니다...");
+            Log(resetBase ? UiText.ResetBaseStartLog : UiText.CleanupStartLog);
 
             SetStatus(resetBase
-                ? "ResetBase 정리 진행 중"
-                : "Windows 정리 진행 중");
+                ? UiText.ResetBaseRunningStatus
+                : UiText.CleanupRunningStatus);
 
             SetBusy(true);
-
             ResetProgressForRun();
 
             _cts = new CancellationTokenSource();
@@ -467,7 +671,7 @@ namespace WinSxSCleanupTool
                 // 정리 후 재분석(옵션)
                 if (chkReAnalyze.Checked)
                 {
-                    SetStatus("정리 후 재분석");
+                    SetStatus("정리 후 재분석 중입니다. 잠시만 기다려 주세요...");
                     Log("▶ 정리 후 재분석 시작... (실제 절감량 계산)");
 
                     var analyzeLines = new List<string>();
@@ -498,34 +702,27 @@ namespace WinSxSCleanupTool
                     }
                     else
                     {
-                        Log(
-                            "ℹ 정리는 정상적으로 완료되었습니다.\n" +
-                            "다만 비교를 위한 사전 분석 정보가 없어\n" +
-                            "이번 실행의 실제 절감량은 계산되지 않았습니다."
-                        );
+                        Log("ℹ 정리는 정상적으로 완료되었습니다. 다만 비교를 위한 사전 정보가 없어 실제 절감량은 계산되지 않았습니다.");
                     }
 
-                    UpdateSummaryLabels();
-
-                    // 🔽 기술 로그는 요약 전에
+                    UpdateSummaryCards();
                     Log($"(Re-Analyze ExitCode: {analyzeExit})");
-
-                    // 🔽 요약은 항상 맨 마지막
                     LogSummaryBlock("정리 결과 요약");
-                    SetStatus("완료 (결과 요약을 확인하세요)");
                 }
+
+                SetStatus(UiText.CompletedStatus);
                 SetProgressSafe(100);
             }
             catch (OperationCanceledException)
             {
                 Log("⛔ 작업 취소됨");
-                SetStatus("취소됨");
+                SetStatus(UiText.CanceledStatus);
                 SetProgressSafe(0);
             }
             catch (Exception ex)
             {
                 Log("❌ 오류: " + ex);
-                SetStatus("오류");
+                SetStatus(UiText.ErrorStatus);
                 SetProgressSafe(0);
                 MessageBox.Show(ex.ToString(), "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -537,105 +734,22 @@ namespace WinSxSCleanupTool
             }
         }
 
-        // ResetBase 2단 확인 (카운트다운 + 체크박스)
-        private Task<bool> ShowResetBaseTwoStepConfirmAsync()
+        // ResetBase UX 흐름 통합:
+        // 1) 1차 경고(MessageBox)
+        // 2) 최종 확인(ResetBaseConfirmForm: 체크 + 카운트다운)
+        private bool ShowResetBaseConfirmFlow()
         {
-            var tcs = new TaskCompletionSource<bool>();
+            var r = MessageBox.Show(
+                UiText.ResetBaseWarnMessage,
+                UiText.ResetBaseWarnTitle,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
 
-            var dlg = new Form
-            {
-                Text = "경고 - ResetBase",
-                StartPosition = FormStartPosition.CenterParent,
-                Width = 540,
-                Height = 300,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
+            if (r != DialogResult.Yes)
+                return false;
 
-            var lbl = new Label
-            {
-                Left = 16,
-                Top = 16,
-                Width = 500,
-                Height = 90,
-                Text =
-                    "ResetBase는 되돌릴 수 없습니다.\n" +
-                    "실행하면 기존 컴포넌트 버전으로 되돌릴 수 없게 됩니다.\n\n" +
-                    "아래 체크 후, '확인' 버튼이 활성화될 때까지 기다린 뒤 진행하세요."
-            };
-
-            var chk = new CheckBox
-            {
-                Left = 16,
-                Top = 110,
-                Width = 500,
-                Height = 24,
-                Text = "위 내용을 이해했으며 ResetBase를 실행하겠습니다."
-            };
-
-            var lblCountdown = new Label
-            {
-                Left = 16,
-                Top = 140,
-                Width = 240,
-                Height = 24,
-                Text = "대기: 5초"
-            };
-
-            var btnOk = new Button { Text = "확인", Left = 310, Top = 170, Width = 100, Height = 34, Enabled = false };
-            var btnCancel = new Button { Text = "취소", Left = 420, Top = 170, Width = 100, Height = 34 };
-
-            dlg.Controls.AddRange(new Control[] { lbl, chk, lblCountdown, btnOk, btnCancel });
-
-            bool countdownDone = false;
-            void UpdateOk() => btnOk.Enabled = countdownDone && chk.Checked;
-
-            chk.CheckedChanged += (_, __) => UpdateOk();
-
-            btnCancel.Click += (_, __) =>
-            {
-                dlg.Close();
-                tcs.TrySetResult(false);
-            };
-
-            btnOk.Click += (_, __) =>
-            {
-                dlg.Close();
-                tcs.TrySetResult(true);
-            };
-
-            int remain = 5;
-            var timer = new System.Windows.Forms.Timer { Interval = 1000, Enabled = true };
-
-            timer.Tick += (_, __) =>
-            {
-                remain--;
-                if (remain <= 0)
-                {
-                    timer.Stop();
-                    timer.Dispose();
-                    lblCountdown.Text = "진행 가능";
-                    countdownDone = true;
-                    UpdateOk();
-                }
-                else
-                {
-                    lblCountdown.Text = $"대기: {remain}초";
-                }
-            };
-
-            dlg.FormClosed += (_, __) =>
-            {
-                if (timer.Enabled)
-                {
-                    timer.Stop();
-                    timer.Dispose();
-                }
-            };
-
-            dlg.ShowDialog(this);
-            return tcs.Task;
+            using var dlg = new ResetBaseConfirmForm(GetInformationalVersion());
+            return dlg.ShowDialog(this) == DialogResult.OK;
         }
 
         // =========================
@@ -651,8 +765,7 @@ namespace WinSxSCleanupTool
 
         private void UpdateProgressFromLine(string line)
         {
-            // 1) "33.0%" 같은 숫자 퍼센트 파싱
-            // 2) 가끔 "100.0%" 여러번 나올 수 있음
+            // "33.0%" 같은 숫자 퍼센트 파싱
             var m = Regex.Match(line, @"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*%");
             if (m.Success)
             {
@@ -675,7 +788,7 @@ namespace WinSxSCleanupTool
             var since = DateTime.UtcNow - _lastProgressUpdateUtc;
             if (since.TotalSeconds < 2.0) return;
 
-            // 실제 %가 한번이라도 있었으면, 95%까지만 천천히(“멈춘 듯” 보이는 것 방지)
+            // 실제 %가 한번이라도 있었으면 95%까지만 천천히
             int cap = _progressHadRealPercent ? 95 : 90;
 
             int next = _lastProgressValue + 1;
@@ -694,10 +807,7 @@ namespace WinSxSCleanupTool
 
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() =>
-                {
-                    progress.Value = value;
-                }));
+                BeginInvoke(new Action(() => progress.Value = value));
             }
             else
             {
@@ -712,14 +822,8 @@ namespace WinSxSCleanupTool
         {
             _isBusy = busy;
 
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => ApplyBusyState()));
-            }
-            else
-            {
-                ApplyBusyState();
-            }
+            if (InvokeRequired) BeginInvoke(new Action(ApplyBusyState));
+            else ApplyBusyState();
         }
 
         private void ApplyBusyState()
@@ -737,14 +841,14 @@ namespace WinSxSCleanupTool
 
         private void SetStatus(string text)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => lblStatus.Text = $"상태: {text}"));
-            }
-            else
+            void Apply()
             {
                 lblStatus.Text = $"상태: {text}";
+                lblStatus.ForeColor = _isBusy ? Color.DarkBlue : SystemColors.ControlText;
             }
+
+            if (InvokeRequired) BeginInvoke(new Action(Apply));
+            else Apply();
         }
 
         // =========================
@@ -752,18 +856,22 @@ namespace WinSxSCleanupTool
         // =========================
         private void Log(string msg)
         {
-
             _fullLog.AppendLine(msg);
-            string line = msg;
 
             if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => AppendLogLine(line)));
-            }
+                BeginInvoke(new Action(() => AppendLogLine(msg)));
             else
-            {
-                AppendLogLine(line);
-            }
+                AppendLogLine(msg);
+        }
+
+        private void AppendLogLine(string line)
+        {
+            txtLog.AppendText(line + Environment.NewLine);
+            TrimUiLogIfTooLong();
+
+            // ✅ 자동 스크롤
+            txtLog.SelectionStart = txtLog.TextLength;
+            txtLog.ScrollToCaret();
         }
 
         private void LogSummaryBlock(string title)
@@ -799,19 +907,11 @@ namespace WinSxSCleanupTool
             Log(sb.ToString());
         }
 
-
-
-        private void AppendLogLine(string line)
-        {
-            txtLog.AppendText(line + Environment.NewLine);
-            TrimUiLogIfTooLong();
-        }
-
         private void SaveLog()
         {
             using var sfd = new SaveFileDialog
             {
-                Title = "로그 저장",
+                Title = UiText.SaveLogTitle,
                 Filter = "텍스트 파일 (*.txt)|*.txt|모든 파일 (*.*)|*.*",
                 FileName = $"WinSxS_Cleanup_Log_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
             };
@@ -820,11 +920,10 @@ namespace WinSxSCleanupTool
 
             try
             {
-                File.WriteAllText(sfd.FileName, _fullLog.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                File.WriteAllText(sfd.FileName, _fullLog.ToString(), new UTF8Encoding(false));
                 MessageBox.Show(
-                    "로그 파일이 성공적으로 저장되었습니다.\n\n" +
-                    "문제 발생 시, 이 로그 파일을 함께 전달해 주세요.",
-                    "로그 저장 완료",
+                    UiText.SaveLogDoneMessage,
+                    UiText.SaveLogDoneTitle,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }
@@ -842,8 +941,7 @@ namespace WinSxSCleanupTool
             Action<string, bool> onLine,   // bool: isError
             CancellationToken token)
         {
-            // DISM 출력은 환경에 따라 UTF-8 / OEM(예: CP949) / UTF-16(Unicode) 등으로 달라질 수 있음.
-            // - BOM/널바이트 패턴/UTF-8 유효성 기반으로 인코딩을 자동 판별해서 "한글 깨짐"을 최대한 방지한다.
+            // DISM 출력 인코딩 자동 판별
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             var psi = new ProcessStartInfo
@@ -854,25 +952,22 @@ namespace WinSxSCleanupTool
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
-                // ⚠ StandardOutputEncoding/StandardErrorEncoding 지정하지 않음(바이트로 직접 디코드)
             };
 
             using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
             p.Start();
 
             async Task PumpStreamAsync(Stream stream, bool isErr)
             {
-                // 1) 초기 버퍼로 인코딩 추정
                 const int sniffMax = 8192;
                 var initial = new List<byte>(sniffMax);
                 var buf = new byte[4096];
 
                 int read;
-                while (initial.Count < sniffMax && (read = await stream.ReadAsync(buf, 0, Math.Min(buf.Length, sniffMax - initial.Count), token)) > 0)
+                while (initial.Count < sniffMax &&
+                       (read = await stream.ReadAsync(buf, 0, Math.Min(buf.Length, sniffMax - initial.Count), token)) > 0)
                 {
                     initial.AddRange(buf.AsSpan(0, read).ToArray());
-                    // 초반에 충분히 쌓이면(예: BOM/널패턴) 바로 판정 가능하지만 단순화를 위해 계속 누적
                     if (initial.Count >= 512) break;
                 }
 
@@ -882,16 +977,13 @@ namespace WinSxSCleanupTool
 
                 void EmitLinesFromPending()
                 {
-                    // \r\n / \n 모두 처리
                     int idx;
                     while ((idx = pending.ToString().IndexOf('\n')) >= 0)
                     {
                         string line = pending.ToString(0, idx);
-                        // CR 제거
                         if (line.EndsWith("\r", StringComparison.Ordinal)) line = line[..^1];
                         pending.Remove(0, idx + 1);
-                        if (line.Length > 0) onLine(line, isErr);
-                        else onLine(string.Empty, isErr);
+                        onLine(line, isErr);
                     }
                 }
 
@@ -899,7 +991,6 @@ namespace WinSxSCleanupTool
                 {
                     if (bytes.Length == 0) return;
 
-                    // Decoder로 안전하게 char 변환
                     int charCount = decoder.GetCharCount(bytes, flush: false);
                     if (charCount == 0) return;
 
@@ -912,16 +1003,13 @@ namespace WinSxSCleanupTool
                     }
                 }
 
-                // 2) 초기 바이트 처리
                 FeedBytes(initial.ToArray());
 
-                // 3) 나머지 스트림 처리
                 while ((read = await stream.ReadAsync(buf, 0, buf.Length, token)) > 0)
                 {
                     FeedBytes(buf.AsSpan(0, read));
                 }
 
-                // 4) flush
                 int flushCount = decoder.GetCharCount(Array.Empty<byte>(), flush: true);
                 if (flushCount > 0)
                 {
@@ -932,10 +1020,9 @@ namespace WinSxSCleanupTool
                         pending.Append(flushChars, 0, fw);
                     }
                 }
-                // 남은 줄 방출
+
                 if (pending.Length > 0)
                 {
-                    // 마지막에 '\n'이 없을 수 있음
                     string rest = pending.ToString();
                     if (rest.EndsWith("\r", StringComparison.Ordinal)) rest = rest[..^1];
                     onLine(rest, isErr);
@@ -948,7 +1035,7 @@ namespace WinSxSCleanupTool
                     if (data.Count >= 2 && data[0] == 0xFF && data[1] == 0xFE) return Encoding.Unicode;              // UTF-16LE
                     if (data.Count >= 2 && data[0] == 0xFE && data[1] == 0xFF) return Encoding.BigEndianUnicode;      // UTF-16BE
 
-                    // UTF-16 패턴(널바이트가 짝/홀에 몰림) 감지
+                    // UTF-16 패턴 감지(널바이트 분포)
                     int n = Math.Min(data.Count, 2048);
                     int zeroEven = 0, zeroOdd = 0;
                     for (int i = 0; i < n; i++)
@@ -959,22 +1046,18 @@ namespace WinSxSCleanupTool
                             else zeroOdd++;
                         }
                     }
-                    // null 비율이 충분히 높으면 UTF-16로 판단
-                    // (LE: 홀수쪽이 0이 적고, 짝수쪽이 0이 많아지는 경향)
                     if (n >= 64)
                     {
                         double ze = (double)zeroEven / n;
                         double zo = (double)zeroOdd / n;
                         if (ze > 0.12 && zo < 0.02) return Encoding.BigEndianUnicode;
                         if (zo > 0.12 && ze < 0.02) return Encoding.Unicode;
-                        // 둘 다 높으면 그냥 Unicode로(대체로 LE)
                         if (ze > 0.08 && zo > 0.08) return Encoding.Unicode;
                     }
 
-                    // UTF-8 유효성 검사
                     if (LooksLikeUtf8(data)) return Encoding.UTF8;
 
-                    // 기본: 콘솔 OEM(대개 CP949) → 그래도 안 맞으면 Encoding.Default
+                    // 기본: 콘솔 OEM(대개 CP949)
                     try { return GetConsoleOemEncoding(); }
                     catch { return Encoding.Default; }
                 }
@@ -994,7 +1077,7 @@ namespace WinSxSCleanupTool
                             (b & 0xF8) == 0xF0 ? 3 : -1;
 
                         if (need < 0) return false;
-                        if (i + need >= n) break; // 끝부분은 모자랄 수 있으니 true로 둠
+                        if (i + need >= n) break;
 
                         for (int k = 1; k <= need; k++)
                         {
@@ -1010,7 +1093,6 @@ namespace WinSxSCleanupTool
             Task tOut = PumpStreamAsync(p.StandardOutput.BaseStream, isErr: false);
             Task tErr = PumpStreamAsync(p.StandardError.BaseStream, isErr: true);
 
-            // 취소 지원
             using (token.Register(() =>
             {
                 try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
@@ -1038,9 +1120,6 @@ namespace WinSxSCleanupTool
         private static string? ParseReclaimableFromLines(List<string> lines)
         {
             // 한국어/영어 혼합 대응
-            // - "백업 및 사용 안 함 : 4.51 GB"
-            // - "Backup and Disabled Features : 4.51 GB"
-            // - 기타 "Reclaimable" 계열
             foreach (string line in lines)
             {
                 string s = line.Trim();
@@ -1049,7 +1128,6 @@ namespace WinSxSCleanupTool
                     s.Contains("Backup and Disabled", StringComparison.OrdinalIgnoreCase) ||
                     s.Contains("Reclaimable", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 콜론 뒤 값 추출
                     int idx = s.IndexOf(':');
                     if (idx >= 0 && idx + 1 < s.Length)
                     {
@@ -1064,8 +1142,6 @@ namespace WinSxSCleanupTool
 
         private static string? ParseActualStoreSizeFromLines(List<string> lines)
         {
-            // - "구성 요소 저장소의 실제 크기 : 12.03 GB"
-            // - "Actual size of component store : 12.03 GB"
             foreach (string line in lines)
             {
                 string s = line.Trim();
@@ -1097,7 +1173,6 @@ namespace WinSxSCleanupTool
                 return 0;
             }
 
-            // 숫자 + 단위
             var m = Regex.Match(s, @"(?<num>[\d\.,]+)\s*(?<unit>TB|GB|MB|KB|B|bytes?)", RegexOptions.IgnoreCase);
             if (!m.Success) return 0;
 
@@ -1107,7 +1182,6 @@ namespace WinSxSCleanupTool
 
             string unit = m.Groups["unit"].Value.ToUpperInvariant();
 
-            // DISM은 일반적으로 1024 기반 표기
             return unit switch
             {
                 "TB" => num * 1024 * 1024,
@@ -1131,36 +1205,85 @@ namespace WinSxSCleanupTool
         }
 
         // =========================
-        // Summary UI
+        // Summary UI (cards + color patch)
         // =========================
-        private void UpdateSummaryLabels()
+        private enum ValueTone
+        {
+            Muted,
+            Normal,
+            Good,
+            Warn
+        }
+
+        private static void ApplyValueTone(Label label, ValueTone tone)
+        {
+            // 기본은 과하지 않게
+            label.ForeColor = tone switch
+            {
+                ValueTone.Good => Color.FromArgb(30, 130, 30),
+                ValueTone.Warn => Color.FromArgb(180, 120, 0),
+                ValueTone.Muted => Color.DimGray,
+                _ => SystemColors.ControlText
+            };
+        }
+
+        private void UpdateSummaryCards()
         {
             // 정리 전
-            lblBefore.Text = _lastActualBeforeMB > 0
-                ? $"정리 전 WinSxS 크기 : {FormatMB(_lastActualBeforeMB)}"
-                : "정리 전 WinSxS 크기 : 분석 필요";
+            if (_lastActualBeforeMB > 0)
+            {
+                valBefore.Text = FormatMB(_lastActualBeforeMB);
+                ApplyValueTone(valBefore, ValueTone.Normal);
+            }
+            else
+            {
+                valBefore.Text = "분석 필요";
+                ApplyValueTone(valBefore, ValueTone.Muted);
+            }
 
             // 정리 후
-            lblAfter.Text = _lastActualAfterMB > 0
-                ? $"정리 후 WinSxS 크기 : {FormatMB(_lastActualAfterMB)}"
-                : "정리 후 WinSxS 크기 : 미측정";
+            if (_lastActualAfterMB > 0)
+            {
+                valAfter.Text = FormatMB(_lastActualAfterMB);
+                ApplyValueTone(valAfter, ValueTone.Normal);
+            }
+            else
+            {
+                valAfter.Text = "미측정";
+                ApplyValueTone(valAfter, ValueTone.Muted);
+            }
 
-            // 예상 절감량 (상한)
-            lblExpected.Text = _lastUpperBoundMB > 0
-                ? $"예상 절감량(상한) : {FormatMB(_lastUpperBoundMB)}"
-                : "예상 절감량(상한) : 미측정";
+            // 예상 절감량(상한)
+            if (_lastUpperBoundMB > 0)
+            {
+                valExpected.Text = FormatMB(_lastUpperBoundMB);
+                ApplyValueTone(valExpected, ValueTone.Good);
+            }
+            else
+            {
+                valExpected.Text = "미측정";
+                ApplyValueTone(valExpected, ValueTone.Muted);
+            }
 
             // 실제 절감량
             if (_lastActualBeforeMB > 0 && _lastActualAfterMB > 0)
             {
-                var saved = _lastActualBeforeMB - _lastActualAfterMB;
-                lblSaved.Text = saved > 0
-                    ? $"실제 절감량 : {FormatMB(saved)}"
-                    : "실제 절감량 : 없음";
+                var saved = Math.Max(0, _lastActualBeforeMB - _lastActualAfterMB);
+                if (saved > 0.01)
+                {
+                    valSaved.Text = FormatMB(saved);
+                    ApplyValueTone(valSaved, ValueTone.Good);
+                }
+                else
+                {
+                    valSaved.Text = "없음";
+                    ApplyValueTone(valSaved, ValueTone.Muted);
+                }
             }
             else
             {
-                lblSaved.Text = "실제 절감량 : 아직 계산되지 않음";
+                valSaved.Text = "아직 계산되지 않음";
+                ApplyValueTone(valSaved, ValueTone.Muted);
             }
         }
 
@@ -1234,6 +1357,7 @@ namespace WinSxSCleanupTool
                 // ignore
             }
         }
+
         // =========================
         // About
         // =========================
@@ -1283,7 +1407,7 @@ namespace WinSxSCleanupTool
         {
             if (btnResetBase == null) return;
 
-            btnResetBase.Text = "ResetBase (위험)";
+            btnResetBase.Text = "ResetBase (되돌릴 수 없음)";
             btnResetBase.UseVisualStyleBackColor = false;
 
             btnResetBase.BackColor = Color.FromArgb(180, 50, 50);
@@ -1293,21 +1417,20 @@ namespace WinSxSCleanupTool
             btnResetBase.FlatAppearance.BorderColor = Color.FromArgb(140, 30, 30);
             btnResetBase.FlatAppearance.BorderSize = 1;
         }
+
         // DISM 출력 라인을 UI에 표시할지 결정 (진행률/잡다한 헤더 제거)
         private static bool ShouldShowDismLineInUi(string line)
         {
             var s = line.Trim();
 
-            // 진행률 바/퍼센트 반복 줄 제거 (네 로그에 보이던 그 막대들)
-            // [==== 50.0% ====] 형태 제거 (공백/문자 다양성 허용)
+            // 진행률 바/퍼센트 반복 줄 제거
             if (Regex.IsMatch(s, @"^\[[=\-\s]*\d{1,3}(\.\d+)?%[=\-\s]*\]$")) return false;
             if (s.Contains("%") && s.Contains("[") && s.Contains("]") && s.Contains('=')) return false;
 
             // "50.0%" 같은 단독 퍼센트 줄 제거
             if (Regex.IsMatch(s, @"^\d{1,3}(\.\d+)?%$")) return false;
 
-
-            // DISM 헤더/군더더기(원하면 더 추가)
+            // DISM 헤더/군더더기
             if (s.StartsWith("배포 이미지 서비스", StringComparison.OrdinalIgnoreCase)) return false;
             if (s.StartsWith("Deployment Image Servicing", StringComparison.OrdinalIgnoreCase)) return false;
             if (s.StartsWith("Version:", StringComparison.OrdinalIgnoreCase)) return false;
@@ -1322,20 +1445,17 @@ namespace WinSxSCleanupTool
             _fullLog.AppendLine(line);
 
             if (ShouldShowDismLineInUi(line))
-                AppendLogLine(line); // 기존 UI 출력 함수 재사용
+                AppendLogLine(line);
         }
 
-        // (선택) UI 로그 자체도 너무 길어지면 앞부분을 잘라내기
         private void TrimUiLogIfTooLong()
         {
-            const int MaxChars = 60_000; // 대충 6만자 선에서 잘라내기
+            const int MaxChars = 60_000;
             if (txtLog.TextLength <= MaxChars) return;
 
             txtLog.Text = txtLog.Text.Substring(txtLog.TextLength - MaxChars);
             txtLog.SelectionStart = txtLog.TextLength;
             txtLog.ScrollToCaret();
         }
-
     }
-
 }

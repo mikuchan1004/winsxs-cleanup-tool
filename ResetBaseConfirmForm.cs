@@ -17,6 +17,8 @@ namespace WinSxSCleanupTool
         private readonly System.Windows.Forms.Timer _timer;
         private int _secondsLeft;
 
+        private const int CountdownSeconds = 5;
+
         public ResetBaseConfirmForm() : this(versionText: null) { }
 
         public ResetBaseConfirmForm(string? versionText)
@@ -60,6 +62,7 @@ namespace WinSxSCleanupTool
                 Enabled = false,
                 AutoSize = true,
                 Padding = new Padding(10, 6, 10, 6),
+                UseVisualStyleBackColor = false
             };
 
             _btnCancel = new Button
@@ -99,7 +102,7 @@ namespace WinSxSCleanupTool
 
             Controls.Add(layout);
 
-            _secondsLeft = 3;
+            _secondsLeft = CountdownSeconds;
             _timer = new System.Windows.Forms.Timer { Interval = 1000 };
             _timer.Tick += (_, __) =>
             {
@@ -117,7 +120,7 @@ namespace WinSxSCleanupTool
             {
                 if (_chk.Checked)
                 {
-                    _secondsLeft = 3;
+                    _secondsLeft = CountdownSeconds;
                     _timer.Stop();
                     _timer.Start();
                 }
@@ -146,22 +149,46 @@ namespace WinSxSCleanupTool
 
         private void UpdateOkState()
         {
-            if (!_chk.Checked)
+            // 기본 스타일(비활성)
+            void SetOkStyleDisabled()
             {
                 _btnOk.Enabled = false;
                 _btnOk.Text = UiText.ResetBaseExecuteButtonText;
+                _btnOk.BackColor = SystemColors.Control;
+                _btnOk.ForeColor = SystemColors.ControlText;
+            }
+
+            // 카운트다운 중(주의: 주황)
+            void SetOkStyleCountdown(int sec)
+            {
+                _btnOk.Enabled = false;
+                _btnOk.Text = $"{UiText.ResetBaseExecuteButtonText} ({sec})";
+                _btnOk.BackColor = Color.FromArgb(230, 160, 40);
+                _btnOk.ForeColor = Color.White;
+            }
+
+            // 활성(위험: 빨강)
+            void SetOkStyleEnabled()
+            {
+                _btnOk.Enabled = true;
+                _btnOk.Text = UiText.ResetBaseExecuteButtonText;
+                _btnOk.BackColor = Color.FromArgb(180, 50, 50);
+                _btnOk.ForeColor = Color.White;
+            }
+
+            if (!_chk.Checked)
+            {
+                SetOkStyleDisabled();
                 return;
             }
 
             if (_timer.Enabled && _secondsLeft > 0)
             {
-                _btnOk.Enabled = false;
-                _btnOk.Text = $"{UiText.ResetBaseExecuteButtonText} ({_secondsLeft})";
+                SetOkStyleCountdown(_secondsLeft);
                 return;
             }
 
-            _btnOk.Enabled = true;
-            _btnOk.Text = UiText.ResetBaseExecuteButtonText;
+            SetOkStyleEnabled();
         }
     }
 }

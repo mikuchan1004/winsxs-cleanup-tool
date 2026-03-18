@@ -1,148 +1,89 @@
-# 🧹 WinSxS Cleanup Tool (C#)
+# 📜 WinSxS Cleanup Tool (C#)
 
-[![Windows](https://img.shields.io/badge/Platform-Windows%2010%2B-blue?logo=windows)](#)
-[![.NET](https://img.shields.io/badge/.NET-net8.0--windows-blueviolet?logo=dotnet)](#)
-[![License](https://img.shields.io/badge/License-MIT-green)](#license)
-[![Release](https://img.shields.io/github/v/release/mikuchan1004/winsxs-cleanup-tool?include_prereleases&label=Release)](
-https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
-)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/db7b52550fdd627fead4e0627bcf1dc44159276579c2308ea360e344d004749c
-)
+![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) ![Release: v3.0.0](https://img.shields.io/badge/Release-v3.0.0-blue) ![VirusTotal: Safe](https://img.shields.io/badge/VirusTotal-Pass-brightgreen)
 
-**DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
-Windows 기본 명령만 사용하며, 불필요한 백그라운드 동작이나 네트워크 통신이 없습니다.
+**DISM 기반 WinSxS(Component Store) 분석 및 정리 GUI 유틸리티**
+Windows 기본 명령을 사용하여 불필요한 백업이나 구버전 데이터를 안전하게 분석하고 정리합니다.
 
-
-Windows의 **WinSxS(Component Store)** 를  
-DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유틸리티입니다.
-
-> ⚙ 개인이 제작한 도구이며, 스크립트/코드는 Google Gemini의 도움을 받아 작성되었습니다.  
-> 🌐 네트워크 통신, 백그라운드 상주, 광고 등은 **일절 없습니다**.
+> 💡 본 프로그램은 Google Gemini의 도움을 받아 C#으로 제작되었으며, 
+> 네트워크 통신이나 백그라운드 상주 없이 투명한 '단일 실행'을 지향합니다.
 
 ---
 
-
-<img width="791" height="443" alt="스크린샷 2026-03-19 035222" src="https://github.com/user-attachments/assets/42e4146d-8fcf-4a6c-9b4a-a0ff42738265" />
-
+<img width="791" height="443" alt="스크린샷 2026-03-19 035222" src="https://github.com/user-attachments/assets/364a323d-bee9-47b8-9ea1-fc1e0d152b62" />
 
 
-## ✨ 주요 기능
-
-- ✔ DISM 기반 WinSxS 분석 (`AnalyzeComponentStore`)
-- ✔ 예상 절감 용량 파싱 및 표시
-- ✔ 구성 요소 정리 (`StartComponentCleanup`)
-- ✔ ResetBase 지원 (⚠ 되돌릴 수 없음)
-- ✔ **정리 후 재분석 옵션**
-  - 실제 절감량 계산
-  - 정리 전 / 후 값 비교 표시
-- ✔ 진행률 표시(가능한 범위 내)
-- ✔ 상세 로그 출력
-- ✔ 설정 자동 저장(JSON)
-- ✔ 아이콘 포함 단일 실행 파일(EXE)
+### ✨ 주요 기능
+* **DISM 기반 WinSxS 분석**: 안전한 컴포넌트 분석(AnalyzeComponentStore) 수행
+* **핵심 절감 용량 측정 및 표시**: 실제 제거 가능한 용량을 정밀하게 계산
+* **안전 요소 정리**: 권장되는 시스템 정리(StartComponentCleanup) 실행
+* **ResetBase 지원**: 누적된 업데이트 패키지 기반을 초기화하여 용량 확보 극대화
+* **사용자 친화적 UX/UI**: 
+  * 정리 전/후 결과 요약 카드 제공
+  * 실시간 작업 로그 및 진행률 표시
+  * 관리자 권한 자동 확인 및 안내
 
 ---
 
-## 📌 “예상 절감 용량”에 대해
+### 🔍 "예상 실감 용량"에 대해
+Windows의 DISM 엔진은 단순한 파일 크기 합계가 아닌 '논리적 절감량'을 제공하므로, 
+본 도구에서는 다음과 같이 표시됩니다.
 
-Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습니다.**
-
-본 도구에서는 다음과 같이 표시합니다:
-
-- **정리 가능 상한**
-  - DISM 분석 결과의  
-    `백업 및 기능 사용 안 함 (Backups and Disabled Features)` 값
-- **실제 절감량**
-  - 정리 전/후 WinSxS 실제 크기를 비교하여 계산
-
-> 즉,  
-> **상한 = 이론적으로 정리 가능한 최대치**  
-> **실제 절감량 = 실제로 줄어든 용량**
-
-환경에 따라 두 값은 다를 수 있습니다.
-
-## 🖥 시스템 요구사항
-
-- Windows 10 1809 (빌드 17763) 이상
-- x64 환경
-- 관리자 권한 필요(UAC)
+* **정리 가능 상태**: DISM 보고 결과에 따라 '권장' 및 '예상 절감량' 표시
+* **실제 절감량**: 작업 완료 후 실제 디스크 점유율 변화를 추적하여 계산
+  * *주의: 하드링크(Hardlink) 구조 특성상 탐색기 상의 수치와 실제 물리적 용량은 차이가 있을 수 있습니다.*
 
 ---
 
-## 🚀 사용 방법
-
-1. `WinSxSCleanupTool.exe` 실행 (관리자 권한)
-2. **[분석]** 버튼 클릭
-   - 예상 절감 용량 확인
-3. **[정리]** 또는 **[ResetBase]** 실행
-4. (선택) **정리 후 재분석** 체크 시
-   - 실제 절감량 자동 계산
+### 💻 시스템 요구사항
+* **OS**: Windows 10 / 11 (빌드 17763 이상)
+* **런타임**: .NET 8.0 Desktop Runtime (Self-contained 배포 시 불필요)
+* **권한**: 관리자 권한 필수
 
 ---
 
-## ⚠️ 주의 사항
-
-- **ResetBase는 되돌릴 수 없습니다**
-- Windows 업데이트 제거가 불가능해질 수 있습니다
-- 반드시 내용을 이해한 후 사용하세요
-- DISM 출력 언어/형식에 따라 일부 환경에서는
-  - 예상 절감 용량 파싱이 제한될 수 있습니다
+### 🚀 사용 방법
+1. `WinSxSCleanupTool.exe`를 **관리자 권한**으로 실행합니다.
+2. [분석] 버튼을 눌러 현재 시스템의 정리 가능 용량을 확인합니다.
+3. [정리] 또는 [ResetBase]를 실행합니다.
+4. 작업 완료 후 제공되는 **요약 보고서**를 확인합니다.
 
 ---
 
-## 🛡 보안 / 오탐 관련
-
-- 네트워크 통신 ❌
-- 백그라운드 상주 ❌
-- PowerShell 스크립트 삽입 ❌
-- Windows 공식 DISM만 사용
-
-일부 백신에서 **관리자 권한 + 시스템 정리 도구 특성상 오탐**이 발생할 수 있습니다.
+### ⚠️ 주의 사항
+* **ResetBase는 되돌릴 수 없습니다**: 이전 업데이트로의 롤백이 불가능해지므로 신중히 사용하세요.
+* **Windows 업데이트**: 업데이트가 대기 중이거나 설치 중일 때는 작동하지 않을 수 있습니다.
+* **시간 소요**: 시스템 성능 및 정리 데이터 양에 따라 수 분에서 수십 분이 소요됩니다.
 
 ---
 
-## 📦 배포 형태
-
-- Self-contained (런타임 포함)
-- 실행 파일 + 필수 네이티브 DLL만 포함
-- 불필요한 언어 리소스 제거 (ko 전용)
-
----
-
-## 🧾 라이선스
-
-이 프로젝트는 개인 학습/공유 목적의 도구입니다.  
-상업적 사용 시 책임은 사용자에게 있습니다.
+### 🛡️ 보안 / 오탐 관련
+* **네트워크 통신 X** ❌
+* **백그라운드 상주 X** ❌
+* **사용자 데이터 수집 X** ❌
+* **오탐 안내**: 시스템 파일을 다루는 도구 특성상 일부 백신에서 `Agent.JIN` 등으로 오탐될 수 있으나, 오픈소스로 공개된 안전한 도구입니다.
 
 ---
 
-## 🛠 제작 정보
-
-- Language: C#
-- Framework: .NET (Windows)
-- UI: WPF
-- Vendor: Powered by Google Gemini
+### 📦 배포 형태
+* **Self-contained**: 별도의 .NET 설치 없이 즉시 실행 가능
+* **단일 파일**: 모든 리소스를 포함한 단일 `.exe` 구성
+* **다이어트 패키징**: 런타임 최적화로 배포 용량 최소화
 
 ---
 
-## 🛠️ v3.0.0 체인지로그 (요약)
+### 🛠️ v3.0.0 체인지로그 (요약)
 
-### ✨ 주요 기능 개선 (Major Improvements)
-* **WinSXS 분석 로직 고도화**: 분석 알고리즘 최적화 및 시스템 컴포넌트 저장소의 불필요한 백업/구버전 파일을 더 정밀하게 식별하여 정리 효율을 극대화했습니다.
-* **비동기 작업 엔진 도입**: 대용량 작업 시 발생하는 UI 프리징 현상을 방지하고, 실시간 작업 현황을 파악할 수 있는 상세 로그 시스템을 강화했습니다.
+#### ✨ 주요 기능 개선 (Major Improvements)
+* **분석 로직 고도화**: WinSXS 알고리즘 최적화로 정리 효율 및 식별 정밀도 향상
+* **비동기 엔진 도입**: 작업 중 UI 프리징 방지 및 실시간 로그 시스템 가이드 강화
 
-### 🐛 버그 및 안정성 수정 (Bug Fixes)
-* **권한 예외 처리 최적화**: 특정 시스템 환경에서 관리자 권한 획득 및 접근 시 발생하던 간헐적인 비정상 종료 현상을 해결했습니다.
-* **경로 인식 오류 해결**: 사용자 프로필이나 실행 경로에 특수문자 및 공백이 포함될 경우 발생하던 논리적 경로 참조 오류를 수정했습니다.
+#### 🛠️ 버그 및 안정성 수정 (Bug Fixes)
+* **권한 예외 처리**: 특정 환경에서의 비정상 종료 현상 수정 및 권한 획득 로직 개선
+* **경로 인식 오류 해결**: 특수문자나 공백이 포함된 실행 경로에서의 논리 오류 수정
 
-### 📦 배포 및 기타 (Maintenance)
-* **빌드 아티팩트 최적화**: 배포 패키지에서 소스 코드 및 빌드 캐시를 제거하고, 실행에 필요한 순수 바이너리 위주로 슬림하게 구성하여 배포 용량을 획기적으로 줄였습니다.
-* **백신 오탐 대응**: 일부 엔진의 Generic 진단(Agent.JIN 등)을 최소화하기 위한 코드 구조 정제 및 보안 투명성을 위해 VirusTotal 결과 안내를 추가했습니다.
+#### 📦 배포 및 기타 (Maintenance)
+* **아티팩트 최적화**: 배포 패키지에서 불필요한 소스/캐시를 제거하여 용량 최적화 완료
+* **보안 투명성**: 백신 오탐 대응을 위한 코드 정제 및 VirusTotal 안내 추가
 
 🔗 **전체 변경 내역**: [CHANGELOG.md](./CHANGELOG.md)
-
-
-
-
-
-

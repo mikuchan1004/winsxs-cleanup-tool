@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/30202cbdb4b6ae1d4d849721cdbeb6e0ecd6f3edb3a5a5cbbc0cfef72102415b
+https://www.virustotal.com/gui/file/db7b52550fdd627fead4e0627bcf1dc44159276579c2308ea360e344d004749c
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -17,12 +17,15 @@ Windows 기본 명령만 사용하며, 불필요한 백그라운드 동작이나
 Windows의 **WinSxS(Component Store)** 를  
 DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유틸리티입니다.
 
-> ⚙ 개인이 제작한 도구이며, 스크립트/코드는 ChatGPT의 도움을 받아 작성되었습니다.  
+> ⚙ 개인이 제작한 도구이며, 스크립트/코드는 Gemini의 도움을 받아 작성되었습니다.  
 > 🌐 네트워크 통신, 백그라운드 상주, 광고 등은 **일절 없습니다**.
 
 ---
 
-<img width="964" height="670" alt="스크린샷 2026-01-24 001210" src="https://github.com/user-attachments/assets/acc6ce47-4f45-4b97-aa2e-9dc8c87bbe8f" />
+
+<img width="791" height="443" alt="스크린샷 2026-03-19 035222" src="https://github.com/user-attachments/assets/42e4146d-8fcf-4a6c-9b4a-a0ff42738265" />
+
+
 
 ## ✨ 주요 기능
 
@@ -117,18 +120,26 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 - Language: C#
 - Framework: .NET (Windows)
-- UI: WinForms
-- Vendor: Powered by ChatGPT
+- UI: WPF
+- Vendor: Powered by Google Gemini
 
 ---
 
 ## 📜 Changelog (요약)
 
-### v2.0.0
+## 🛠️ v3.0.0 체인지로그 (Changelog)
 
-- UI/UX 전면 개선으로 작업 흐름과 가독성 대폭 향상
-- ResetBase 보호 UX 강화로 위험 작업에 대한 사용자 인지 및 안전성 개선
-- 요약 정보 시각화 및 내부 안정성 개선
+### ✨ 주요 기능 개선 (Major Improvements)
+* **WinSXS 분석 알고리즘 고도화**: 시스템 컴포넌트 저장소 내의 불필요한 백업 및 구버전 파일을 더 안전하고 정밀하게 식별하여 **정리 효율을 극대화**했습니다.
+* **비동기 작업 엔진 도입**: 대용량 파일 정리 시 UI가 멈추는 프리징 현상을 해결하고, 실시간 진행 상황을 확인할 수 있는 **상태 로그 시스템**을 강화했습니다.
+
+### 🐛 버그 및 안정성 수정 (Bug Fixes)
+* **관리자 권한 예외 처리**: 특정 환경에서 권한 문제로 인해 프로그램이 강제 종료되던 현상을 수정했습니다.
+* **경로 인식 오류 해결**: 사용자 프로필이나 설치 경로에 특수문자가 포함된 경우 발생하던 논리적 '찐빠'를 완전히 해결했습니다.
+
+### 📦 배포 및 기타 (Maintenance)
+* **초경량 패키징**: 빌드 아티팩트 다이어트를 통해 소스 코드와 캐시를 제거하고, **순수 실행 파일 위주의 슬림한 배포판**을 구성했습니다. (용량 최적화 완료)
+* **VirusTotal 오탐 대응**: 일부 백신 엔진의 Generic 진단(Agent.JIN 등)을 최소화하기 위한 코드 구조 정제 작업을 진행했습니다.
 
 ➡ 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
 

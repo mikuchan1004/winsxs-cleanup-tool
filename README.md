@@ -1,6 +1,6 @@
 # 📜 WinSxS Cleanup Tool (C#)
 
-![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) ![Release: v3.0.0](https://img.shields.io/badge/Release-v3.0.0-blue) [![VirusTotal: 1/73](https://img.shields.io/badge/VirusTotal-1%2F73-orange)](https://www.virustotal.com/gui/file/db7b52550fdd627fead4e0627bcf1dc44159276579c2308ea360e344d004749c)
+![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) ![Release: v3.0.0](https://img.shields.io/badge/Release-v3.0.0-blue) [![VirusTotal: 1/68](https://img.shields.io/badge/VirusTotal-1%2F73-orange)](https://www.virustotal.com/gui/file/db7b52550fdd627fead4e0627bcf1dc44159276579c2308ea360e344d004749c)
 
 **DISM 기반 WinSxS(Component Store) 분석 및 정리 GUI 유틸리티**
 Windows 기본 명령을 사용하여 불필요한 백업이나 구버전 데이터를 안전하게 분석하고 정리합니다.

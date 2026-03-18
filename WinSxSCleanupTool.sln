@@ -1,31 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+VisualStudioVersion = 17.14.36811.4 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinSxSCleanupTool", "WinSxSCleanupTool.csproj", "{39666F7C-42D0-4932-8E61-1542D823C8B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinSxSCleanupTool", "WinSxSCleanupTool.csproj", "{FDA5688C-E1B1-480A-81F5-14FEAB6E2434}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
-		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Debug|x64.ActiveCfg = Debug|x64
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Debug|x64.Build.0 = Debug|x64
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Release|x64.ActiveCfg = Release|x64
-		{39666F7C-42D0-4932-8E61-1542D823C8B7}.Release|x64.Build.0 = Release|x64
+		{FDA5688C-E1B1-480A-81F5-14FEAB6E2434}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDA5688C-E1B1-480A-81F5-14FEAB6E2434}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDA5688C-E1B1-480A-81F5-14FEAB6E2434}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDA5688C-E1B1-480A-81F5-14FEAB6E2434}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {AC410BE2-DC6A-4412-AF7D-17F9949F8E11}
+		SolutionGuid = {ED516EF4-963A-4FBD-888A-5F90BEE1AC05}
 	EndGlobalSection
 EndGlobal

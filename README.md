@@ -7,7 +7,7 @@
 https://github.com/mikuchan1004/winsxs-cleanup-tool/releases
 )
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-0%2F63-brightgreen?logo=virustotal&logoColor=white)](
-https://www.virustotal.com/gui/file/30202cbdb4b6ae1d4d849721cdbeb6e0ecd6f3edb3a5a5cbbc0cfef72102415b
+https://www.virustotal.com/gui/file/db7b52550fdd627fead4e0627bcf1dc44159276579c2308ea360e344d004749c
 )
 
 **DISM 기반 WinSxS(Component Store) 분석·정리 GUI 유틸리티**  
@@ -17,12 +17,15 @@ Windows 기본 명령만 사용하며, 불필요한 백그라운드 동작이나
 Windows의 **WinSxS(Component Store)** 를  
 DISM 공식 명령어만 사용해 **분석 및 정리**하는 WinForms GUI 유틸리티입니다.
 
-> ⚙ 개인이 제작한 도구이며, 스크립트/코드는 ChatGPT의 도움을 받아 작성되었습니다.  
+> ⚙ 개인이 제작한 도구이며, 스크립트/코드는 Google Gemini의 도움을 받아 작성되었습니다.  
 > 🌐 네트워크 통신, 백그라운드 상주, 광고 등은 **일절 없습니다**.
 
 ---
 
-<img width="964" height="670" alt="스크린샷 2026-01-24 001210" src="https://github.com/user-attachments/assets/acc6ce47-4f45-4b97-aa2e-9dc8c87bbe8f" />
+
+<img width="791" height="443" alt="스크린샷 2026-03-19 035222" src="https://github.com/user-attachments/assets/42e4146d-8fcf-4a6c-9b4a-a0ff42738265" />
+
+
 
 ## ✨ 주요 기능
 
@@ -117,20 +120,26 @@ Windows의 DISM은 **정확한 ‘예상 절감 용량’을 제공하지 않습
 
 - Language: C#
 - Framework: .NET (Windows)
-- UI: WinForms
-- Vendor: Powered by ChatGPT
+- UI: WPF
+- Vendor: Powered by Google Gemini
 
 ---
 
-## 📜 Changelog (요약)
+## 🛠️ v3.0.0 체인지로그 (요약)
 
-### v2.0.0
+### ✨ 주요 기능 개선 (Major Improvements)
+* **WinSXS 분석 로직 고도화**: 분석 알고리즘 최적화 및 시스템 컴포넌트 저장소의 불필요한 백업/구버전 파일을 더 정밀하게 식별하여 정리 효율을 극대화했습니다.
+* **비동기 작업 엔진 도입**: 대용량 작업 시 발생하는 UI 프리징 현상을 방지하고, 실시간 작업 현황을 파악할 수 있는 상세 로그 시스템을 강화했습니다.
 
-- UI/UX 전면 개선으로 작업 흐름과 가독성 대폭 향상
-- ResetBase 보호 UX 강화로 위험 작업에 대한 사용자 인지 및 안전성 개선
-- 요약 정보 시각화 및 내부 안정성 개선
+### 🐛 버그 및 안정성 수정 (Bug Fixes)
+* **권한 예외 처리 최적화**: 특정 시스템 환경에서 관리자 권한 획득 및 접근 시 발생하던 간헐적인 비정상 종료 현상을 해결했습니다.
+* **경로 인식 오류 해결**: 사용자 프로필이나 실행 경로에 특수문자 및 공백이 포함될 경우 발생하던 논리적 경로 참조 오류를 수정했습니다.
 
-➡ 전체 변경 내역: [CHANGELOG.md](./CHANGELOG.md)
+### 📦 배포 및 기타 (Maintenance)
+* **빌드 아티팩트 최적화**: 배포 패키지에서 소스 코드 및 빌드 캐시를 제거하고, 실행에 필요한 순수 바이너리 위주로 슬림하게 구성하여 배포 용량을 획기적으로 줄였습니다.
+* **백신 오탐 대응**: 일부 엔진의 Generic 진단(Agent.JIN 등)을 최소화하기 위한 코드 구조 정제 및 보안 투명성을 위해 VirusTotal 결과 안내를 추가했습니다.
+
+🔗 **전체 변경 내역**: [CHANGELOG.md](./CHANGELOG.md)
 
 
 

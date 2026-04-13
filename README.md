@@ -1,6 +1,6 @@
 # 📜 WinSxS Cleanup Tool (C#)
 
-![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) [![Latest Release](https://img.shields.io/github/v/release/mikuchan1004/WinSxSCleanupTool?logo=github)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases/latest)
+![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) [![Latest Release](https://img.shields.io/github/v/release/mikuchan1004/winsxs-cleanup-tool?logo=github)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases/latest)
 [![VirusTotal: 1/66](https://img.shields.io/badge/VirusTotal-1%2F73-orange)](https://www.virustotal.com/gui/file/fde1662a51d3afa80e6852177be246a313af482131438b98d7dd829e901826cb)
 
 **DISM 기반 WinSxS(Component Store) 분석 및 정리 GUI 유틸리티**

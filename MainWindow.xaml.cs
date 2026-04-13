@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
@@ -11,7 +12,6 @@ namespace WinSxSCleanupTool
 {
     public partial class MainWindow : Window
     {
-        private readonly string _oldActualSize = string.Empty;
         private string _lastCommand = string.Empty;
         private readonly StringBuilder _currentLogBuffer = new();
 
@@ -24,7 +24,7 @@ namespace WinSxSCleanupTool
         private void AppendLog(string message, Brush? color = null)
         {
             if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(() => AppendLog(message, color)); return; }
-            Paragraph para = new() { Margin = new Thickness(0) };
+            Paragraph para = new() { Margin = new Thickness(0, 0, 0, 2) };
             para.Inlines.Add(new Run($"[{DateTime.Now:HH:mm:ss}] ") { Foreground = Brushes.Gray });
             para.Inlines.Add(new Run(message) { Foreground = color ?? Brushes.LightGray });
             rtbLog.Document.Blocks.Add(para);
@@ -36,6 +36,7 @@ namespace WinSxSCleanupTool
             await Dispatcher.InvokeAsync(() => {
                 stbStatus.Text = $"{statusMessage}: 0%";
                 pbProgress.Value = 0;
+                pbProgress.IsIndeterminate = false;
             });
 
             AppendLog($"{statusMessage} 작업을 시작합니다.", Brushes.SkyBlue);
@@ -56,7 +57,7 @@ namespace WinSxSCleanupTool
                     if (string.IsNullOrEmpty(e.Data)) return;
                     lock (_currentLogBuffer) { _currentLogBuffer.AppendLine(e.Data); }
 
-                    var match = Regex.Match(e.Data, @"(?<num>\d+(\.\d+)?)%");
+                    var match = ProgressPercentRegex().Match(e.Data);
                     if (match.Success)
                     {
                         if (double.TryParse(match.Groups["num"].Value, out double val))
@@ -84,51 +85,84 @@ namespace WinSxSCleanupTool
 
         private void ParseDismResult(string fullLog)
         {
-            var sizeRegex = new Regex(@"(?<size>\d+(\.\d+)?) \s*(?<unit>GB|MB|bytes)", RegexOptions.IgnoreCase);
+            var sizeRegex = ProgressSizeRegex(); // 메서드 이름 확인!
             string[] lines = fullLog.Split([Environment.NewLine, "\n"], StringSplitOptions.RemoveEmptyEntries);
 
             foreach (string line in lines)
             {
-                if (line.Contains("실제 크기"))
+                // 1. 먼저 "정리 권장 여부"를 체크 (이 줄은 숫자가 없으므로 정규식 앞에 있어야 함)
+                if (line.Contains("구성 요소 저장소 정리 권장"))
                 {
-                    var m = sizeRegex.Match(line);
-                    if (m.Success) lblActualSize.Text = $"{m.Groups["size"].Value} {m.Groups["unit"].Value}";
-                }
-                else if (line.Contains("Windows와 공유됨"))
-                {
-                    var m = sizeRegex.Match(line);
-                    if (m.Success) lblSharedSize.Text = $"{m.Groups["size"].Value} {m.Groups["unit"].Value}";
-                }
-                else if (line.Contains("백업 및 기능 사용 안 함"))
-                {
-                    var m = sizeRegex.Match(line);
-                    if (m.Success)
-                    {
-                        // 🌟 정리 작업 직후라면 DISM 수치를 무시하고 0으로 세탁
-                        if (!string.IsNullOrEmpty(_lastCommand)) lblExpectedSize.Text = "0 bytes";
-                        else lblExpectedSize.Text = $"{m.Groups["size"].Value} {m.Groups["unit"].Value}";
-                    }
-                }
-                else if (line.Contains("구성 요소 저장소 정리 권장"))
-                {
-                    bool dismRecommended = line.Contains("예") || line.Contains("Yes");
+                    bool dismRecommended = line.Contains('예') || line.Contains("Yes");
 
-                    // 🌟 정리가 수행되었다면 무조건 '깨끗함' 카드로 업데이트
                     if (!string.IsNullOrEmpty(_lastCommand))
                     {
-                        UpdateCleanupCard(true);
+                        UpdateCleanupCard(true); // 정리 직후라면 무조건 깨끗함으로 표시
                     }
                     else
                     {
-                        // 단순 분석 시에는 실제 수치(0 bytes 여부)와 DISM 권장 사항을 조합해 판단
-                        bool isActuallyClean = lblExpectedSize.Text.Contains("0 bytes") || lblExpectedSize.Text.Contains("0.00");
+                        // 예상 절감량 수치를 확인하여 실제 정리 필요성 판단
+                        string currentText = LblExpectedSize.Text;
+                        bool isActuallyClean = currentText.Contains("0 bytes") || currentText.Contains("0.00");
                         UpdateCleanupCard(!dismRecommended || isActuallyClean);
                     }
+                    continue; // 이 줄은 처리가 끝났으므로 다음 줄로 이동
+                }
+
+                // 2. 그 다음 용량 수치가 있는 줄들만 정규식으로 분석
+                var m = sizeRegex.Match(line);
+                if (!m.Success) continue;
+
+                string size = m.Groups["size"].Value;
+                string unit = " " + m.Groups["unit"].Value;
+
+                if (line.Contains("실제 크기"))
+                {
+                    UpdateSizeLabel(LblActualSize, size, unit);
+                }
+                else if (line.Contains("Windows와 공유됨"))
+                {
+                    UpdateSizeLabel(LblSharedSize, size, unit);
+                }
+                else if (line.Contains("백업 및 기능 사용 안 함"))
+                {
+                    if (!string.IsNullOrEmpty(_lastCommand))
+                        UpdateSizeLabel(LblExpectedSize, "0", " bytes");
+                    else
+                        UpdateSizeLabel(LblExpectedSize, size, unit);
                 }
             }
         }
 
-        private async void btnAnalyze_Click(object sender, RoutedEventArgs e)
+        private static void UpdateSizeLabel(TextBlock label, string size, string unit)
+        {
+            if (label.Inlines.FirstInline is Run sizeRun && label.Inlines.LastInline is Run unitRun)
+            {
+                sizeRun.Text = size;
+                unitRun.Text = unit;
+            }
+            else
+            {
+                label.Text = size + unit;
+            }
+        }
+
+        private void UpdateCleanupCard(bool isClean)
+        {
+            if (isClean)
+            {
+                LblCleanupRecommended.Text = "✅ 아주 깨끗한 상태예요";
+                LblCleanupRecommended.Foreground = Brushes.LimeGreen;
+            }
+            else
+            {
+                LblCleanupRecommended.Text = "📢 지금 정리를 추천해요";
+                LblCleanupRecommended.Foreground = Brushes.Tomato;
+            }
+            LblCleanupRecommended.FontSize = 22;
+        }
+
+        private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
         {
             SetButtonsEnabled(false);
             await RunDismCommand("/Online /Cleanup-Image /AnalyzeComponentStore", "WinSxS 분석");
@@ -136,9 +170,9 @@ namespace WinSxSCleanupTool
 
             await Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (lblActualSize.Text != "미측정")
+                // UI가 업데이트된 후 안내 메시지 출력
+                if (LblCleanupRecommended.Text != "미측정")
                 {
-                    // 🌟 사용자님이 작성하신 주황색 별표 안내 문구 로직 (복구 완료)
                     if (_lastCommand == "ResetBase")
                     {
                         AppendLog("✨ [최적화 완료] 현재 시스템 유지에 꼭 필요한 데이터만 남겨두었습니다.", Brushes.Orange);
@@ -146,21 +180,14 @@ namespace WinSxSCleanupTool
                     }
                     else if (_lastCommand == "Cleanup")
                     {
-                        if (lblCleanupRecommended.Text.Contains("깨끗"))
-                        {
-                            AppendLog("✨ [정리 성공] 불필요한 임시 파일을 모두 비웠습니다. 이제 예상 절감량이 0인 깨끗한 상태입니다..", Brushes.Orange);
-                        }
-                        else
-                        {
-                            AppendLog("📢 일반 정리가 완료되었습니다. 더 깊은 시스템 최적화를 원하시면 '심층 정리'를 이용해 보세요.", Brushes.Orange);
-                        }
+                        AppendLog("✨ [정리 성공] 불필요한 임시 파일을 모두 비웠습니다.", Brushes.Orange);
                     }
                     else if (string.IsNullOrEmpty(_lastCommand))
                     {
-                        if (lblCleanupRecommended.Text.Contains("추천"))
-                            AppendLog("📢 시스템 분석 결과 정리가 필요한 상태입니다! 위 버튼을 눌러 용량을 확보해 보세요.", Brushes.Orange);
+                        if (LblCleanupRecommended.Text.Contains("추천"))
+                            AppendLog("📢 시스템 분석 결과 정리가 필요한 상태입니다!", Brushes.Orange);
                         else
-                            AppendLog("✅ 완벽합니다! 현재 구성 요소 저장소가 최적의 상태로 관리되고 있어 추가 작업이 필요 없습니다.", Brushes.Orange);
+                            AppendLog("✅ 완벽합니다! 추가 작업이 필요 없습니다.", Brushes.Orange);
                     }
                 }
                 _lastCommand = "";
@@ -168,31 +195,15 @@ namespace WinSxSCleanupTool
             }), System.Windows.Threading.DispatcherPriority.ContextIdle);
         }
 
-        private void UpdateCleanupCard(bool isClean)
-        {
-            if (isClean)
-            {
-                lblCleanupRecommended.Text = "✅ 아주 깨끗한 상태예요";
-                lblCleanupRecommended.Foreground = Brushes.LimeGreen;
-                lblExpectedSize.Text = "0 bytes";
-            }
-            else
-            {
-                lblCleanupRecommended.Text = "📢 지금 정리를 추천해요";
-                lblCleanupRecommended.Foreground = Brushes.Tomato;
-            }
-            lblCleanupRecommended.FontSize = 22;
-        }
-
-        private async void btnCleanup_Click(object sender, RoutedEventArgs e)
+        private async void BtnCleanup_Click(object sender, RoutedEventArgs e)
         {
             _lastCommand = "Cleanup";
             SetButtonsEnabled(false);
             await RunDismCommand("/Online /Cleanup-Image /StartComponentCleanup", "Windows 정리");
-            btnAnalyze_Click(null!, null!);
+            BtnAnalyze_Click(null!, null!);
         }
 
-        private async void btnResetBase_Click(object sender, RoutedEventArgs e)
+        private async void BtnResetBase_Click(object sender, RoutedEventArgs e)
         {
             var msg = "심층 정리를 진행하면 이전 업데이트로 되돌릴 수 없게 됩니다.\n그래도 진행하시겠어요?";
             if (MessageBox.Show(msg, "⚠️ 신중한 선택", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
@@ -200,10 +211,10 @@ namespace WinSxSCleanupTool
             _lastCommand = "ResetBase";
             SetButtonsEnabled(false);
             await RunDismCommand("/Online /Cleanup-Image /StartComponentCleanup /ResetBase", "심층 정리");
-            btnAnalyze_Click(null!, null!);
+            BtnAnalyze_Click(null!, null!);
         }
 
-        private void btnSaveLog_Click(object sender, RoutedEventArgs e)
+        private void BtnSaveLog_Click(object sender, RoutedEventArgs e)
         {
             var sfd = new Microsoft.Win32.SaveFileDialog { Filter = "Text Files (*.txt)|*.txt", FileName = $"WinSxS_상세로그_{DateTime.Now:yyyyMMdd_HHmm}.txt" };
             if (sfd.ShowDialog() == true)
@@ -224,8 +235,16 @@ namespace WinSxSCleanupTool
         private static bool ShouldShowLine(string line)
         {
             string s = line.Trim();
-            if (string.IsNullOrWhiteSpace(s) || (s.StartsWith("[") && s.Contains('%')) || s.StartsWith("배포 이미지") || s.StartsWith("이미지 버전")) return false;
+            if (string.IsNullOrWhiteSpace(s) || (s.StartsWith('[') && s.Contains('%')) || s.StartsWith("배포 이미지") || s.StartsWith("이미지 버전")) return false;
             return true;
         }
+
+        // 진행률(%) 추출용 정규식
+        [GeneratedRegex(@"(?<num>\d+(\.\d+)?)%")]
+        private static partial Regex ProgressPercentRegex();
+
+        // 용량(GB, MB, bytes) 추출용 정규식
+        [GeneratedRegex(@"(?<size>\d+(\.\d+)?) \s*(?<unit>GB|MB|bytes)", RegexOptions.IgnoreCase, "ko-KR")]
+        private static partial Regex ProgressSizeRegex();
     }
 }

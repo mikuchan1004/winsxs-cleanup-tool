@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,12 +10,12 @@ using System.Windows.Media;
 
 namespace WinSxSCleanupTool
 {
-    partial class MainWindow : Window
+    public partial class MainWindow : Window
     {
         private string _lastCommand = string.Empty;
         private readonly StringBuilder _currentLogBuffer = new();
 
-        MainWindow()
+       public MainWindow()
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             InitializeComponent();
@@ -85,49 +85,51 @@ namespace WinSxSCleanupTool
 
         private void ParseDismResult(string fullLog)
         {
-            var sizeRegex = ProgressSizeRegex(); // 메서드 이름 확인!
+            var sizeRegex = ProgressSizeRegex();
             string[] lines = fullLog.Split([Environment.NewLine, "\n"], StringSplitOptions.RemoveEmptyEntries);
 
             foreach (string line in lines)
             {
-                // 1. 먼저 "정리 권장 여부"를 체크 (이 줄은 숫자가 없으므로 정규식 앞에 있어야 함)
+                // ParseDismResult 내부의 "정리 권장 여부" 체크 로직 수정
                 if (line.Contains("구성 요소 저장소 정리 권장"))
                 {
-                    bool dismRecommended = line.Contains('예') || line.Contains("Yes");
+                    bool dismSaysYes = line.Contains('예') || line.Contains("Yes");
 
-                    if (!string.IsNullOrEmpty(_lastCommand))
+                    // 1. 예상 절감량 수치를 가져옴 (이전에 UpdateSizeLabel에서 저장된 값 활용)
+                    // 혹은 여기서 직접 sizeRegex로 수치를 다시 확인
+                    var expectedMatch = ProgressSizeRegex().Match(fullLog); // 전체 로그에서 절감량 라인 찾기
+
+                    // 만약 ResetBase 직후라면 무조건 깨끗함으로 표시 (사용자 의도 반영)
+                    if (_lastCommand == "ResetBase")
                     {
-                        UpdateCleanupCard(true); // 정리 직후라면 무조건 깨끗함으로 표시
+                        UpdateCleanupCard(true);
                     }
                     else
                     {
-                        // 예상 절감량 수치를 확인하여 실제 정리 필요성 판단
-                        string currentText = LblExpectedSize.Text;
-                        bool isActuallyClean = currentText.Contains("0 bytes") || currentText.Contains("0.00");
-                        UpdateCleanupCard(!dismRecommended || isActuallyClean);
+                        // DISM이 "예"라고 해도, 예상 절감량이 극히 적으면(예: 0.1GB 미만) "깨끗함"으로 간주
+                        // (참고: 아래는 LblExpectedSize의 텍스트를 검사하는 방식)
+                        bool isTinyAmount = LblExpectedSize.Text.Contains("0.00") || LblExpectedSize.Text.Contains(" 0 ");
+
+                        UpdateCleanupCard(!dismSaysYes || isTinyAmount);
                     }
-                    continue; // 이 줄은 처리가 끝났으므로 다음 줄로 이동
+                    continue;
                 }
 
-                // 2. 그 다음 용량 수치가 있는 줄들만 정규식으로 분석
                 var m = sizeRegex.Match(line);
                 if (!m.Success) continue;
 
+                // 변수에 공백을 섞지 않고 정규식 그룹 값만 딱 가져옵니다.
                 string size = m.Groups["size"].Value;
-                string unit = " " + m.Groups["unit"].Value;
+                string unit = m.Groups["unit"].Value;
 
                 if (line.Contains("실제 크기"))
-                {
                     UpdateSizeLabel(LblActualSize, size, unit);
-                }
                 else if (line.Contains("Windows와 공유됨"))
-                {
                     UpdateSizeLabel(LblSharedSize, size, unit);
-                }
                 else if (line.Contains("백업 및 기능 사용 안 함"))
                 {
                     if (!string.IsNullOrEmpty(_lastCommand))
-                        UpdateSizeLabel(LblExpectedSize, "0", " bytes");
+                        UpdateSizeLabel(LblExpectedSize, "0", "bytes");
                     else
                         UpdateSizeLabel(LblExpectedSize, size, unit);
                 }
@@ -136,30 +138,42 @@ namespace WinSxSCleanupTool
 
         private static void UpdateSizeLabel(TextBlock label, string size, string unit)
         {
-            if (label.Inlines.FirstInline is Run sizeRun && label.Inlines.LastInline is Run unitRun)
-            {
-                sizeRun.Text = size;
-                unitRun.Text = unit;
-            }
-            else
-            {
-                label.Text = size + unit;
-            }
+            if (string.IsNullOrWhiteSpace(size)) return;
+
+            label.Dispatcher.Invoke(() => {
+                // 1. 기존의 모든 Run과 텍스트를 싹 지워버립니다. (중복 원천 차단)
+                label.Inlines.Clear();
+
+                // 2. 숫자 부분 새로 생성 (XAML에서 설정했던 디자인 그대로 복구)
+                // LblExpectedSize(노란색)인지 체크해서 색상 적용
+                Brush sizeColor = (label.Name == "LblExpectedSize") ?
+                    (Brush)new System.Windows.Media.BrushConverter().ConvertFromString("#FFD700")! :
+                    Brushes.White;
+
+                label.Inlines.Add(new Run(size.Trim()) { FontSize = 26, Foreground = sizeColor });
+
+                // 3. 단위 부분 새로 생성 (무조건 공백 하나 + 단위 하나)
+                // unit에 뭐가 왔든 "GB"면 "GB"로, 아니면 그 값으로 딱 한 번만 넣습니다.
+                string displayUnit = unit.Trim().ToUpper().Contains("GB") ? "GB" : unit.Trim();
+                label.Inlines.Add(new Run(" " + displayUnit) { FontSize = 16, Foreground = Brushes.Gray });
+            });
         }
 
         private void UpdateCleanupCard(bool isClean)
         {
-            if (isClean)
-            {
-                LblCleanupRecommended.Text = "✅ 아주 깨끗한 상태예요";
-                LblCleanupRecommended.Foreground = Brushes.LimeGreen;
-            }
-            else
-            {
-                LblCleanupRecommended.Text = "📢 지금 정리를 추천해요";
-                LblCleanupRecommended.Foreground = Brushes.Tomato;
-            }
-            LblCleanupRecommended.FontSize = 22;
+            LblCleanupRecommended.Dispatcher.Invoke(() => {
+                // C#에서 FontSize를 지정하는 코드를 삭제했습니다. XAML 설정을 따릅니다.
+                if (isClean)
+                {
+                    LblCleanupRecommended.Text = "✅ 아주 깨끗한 상태예요";
+                    LblCleanupRecommended.Foreground = Brushes.LimeGreen;
+                }
+                else
+                {
+                    LblCleanupRecommended.Text = "📢 지금 정리를 추천해요";
+                    LblCleanupRecommended.Foreground = Brushes.Tomato;
+                }
+            });
         }
 
         private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)

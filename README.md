@@ -1,7 +1,7 @@
 # 📜 WinSxS Cleanup Tool (C#)
 
 ![Platform: Windows 10/11](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework: .NET](https://img.shields.io/badge/Framework-.NET%208.0%20(Windows)-purple) ![License: MIT](https://img.shields.io/badge/License-MIT-green) [![Latest Release](https://img.shields.io/github/v/release/mikuchan1004/winsxs-cleanup-tool?logo=github)](https://github.com/mikuchan1004/winsxs-cleanup-tool/releases/latest)
-[![VirusTotal Check](https://img.shields.io/badge/VirusTotal-1%2F54%20Clean-success?logo=virustotal)](https://www.virustotal.com/gui/file/fde1662a51d3afa80e6852177be246a313af482131438b98d7dd829e901826cb)
+[![VirusTotal Safe](https://img.shields.io/badge/VirusTotal-Safe-brightgreen?style=flat-square&logo=virustotal)](https://www.virustotal.com/gui/file/bdea7cad6c3404897f12fccc4e402f7d2b29514c235f4a1f949e5325d7e3a6b1?nocache=1)
 ![Assisted by Gemini](https://img.shields.io/badge/Assisted%20by-Google%20Gemini-blue?logo=googlegemini&logoColor=white)
 
 **DISM 기반 WinSxS(Component Store) 분석 및 정리 GUI 유틸리티**
@@ -80,15 +80,18 @@ Windows의 DISM 엔진은 단순한 파일 크기 합계가 아닌 '논리적 �
 이번 버전에서는 진단 로직을 고도화하여 사용자 편의성을 높이고, 프로그램 실행 환경을 더욱 가볍게 최적화했습니다.
 
 ### ✨ 더 똑똑해진 상태 진단
-* **진단 정확도 개선**: 내 컴퓨터에 실제 청소가 필요한지 판단하는 분석 로직을 정교화했습니다.
-* **직관적인 안내**: 분석 후 **"📢 지금 정리를 추천해요"** 또는 **"✅ 아주 깨끗한 상태예요"** 문구와 아이콘을 통해 조치 필요 여부를 한눈에 알 수 있습니다.
+* **진단 정확도 개선**: 시스템 데이터를 분석하여 실제 청소가 필요한지 판단하는 로직을 더욱 정교하게 다듬었습니다.
+* **직관적인 안내**: 분석 결과에 따라 **"📢 지금 정리를 추천해요"** 또는 **"✅ 아주 깨끗한 상태예요"**라는 문구와 아이콘이 표시되어 조치 필요 여부를 한눈에 확인할 수 있습니다.
 
 ### ⚡ 성능 및 용량 최적화
-* **용량 경량화**: 프로그램 구조 최적화(ReadyToRun 설정 등)를 통해 전체 용량을 **70MB대**로 줄였습니다.
-* **분석 속도 향상**: .NET 8의 최신 정규식 소스 생성 기술을 적용하여 시스템 찌꺼기를 찾아내는 속도가 더 빨라졌습니다.
+* **프로그램 경량화**: 내부 구조 최적화를 통해 전체 프로그램 용량을 **70MB대**로 대폭 줄여 부담 없이 소장할 수 있습니다.
+* **분석 속도 향상**: 최신 최적화 기술을 적용하여 시스템의 불필요한 파일을 찾아내는 속도가 이전보다 더 빨라졌습니다.
 
 ### 🛠️ 사용성 및 안정성 강화
-* **단일 파일 배포**: 별도의 설치나 라이브러리 파일 없이, **EXE 파일 하나**만으로 즉시 실행됩니다.
-* **오류 수정**: 특정 환경에서 보안 체크섬이 정상적으로 표시되지 않던 문제를 해결하여 안정성을 높였습니다.
+* **단일 파일 배포**: 별도의 설치 과정이나 부속 파일 없이, **EXE 파일 하나**만으로 어디서든 즉시 실행 가능합니다.
+* **실행 안정성 개선**: 특정 환경에서 발생하던 데이터 표시 오류를 수정하여 더욱 안정적인 사용 환경을 제공합니다.
+
+---
+💡 **참고**: 본 프로그램은 시스템 관리를 위해 실행 시 **관리자 권한**을 요청합니다. 안심하고 [예]를 눌러 진행해 주세요.
 
 🔗 **전체 변경 내역**: [CHANGELOG.md](./CHANGELOG.md)

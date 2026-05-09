@@ -10,12 +10,12 @@ using System.Windows.Media;
 
 namespace WinSxSCleanupTool
 {
-    public partial class MainWindow : Window
+    partial class MainWindow : Window
     {
         private string _lastCommand = string.Empty;
         private readonly StringBuilder _currentLogBuffer = new();
 
-        public MainWindow()
+        MainWindow()
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             InitializeComponent();

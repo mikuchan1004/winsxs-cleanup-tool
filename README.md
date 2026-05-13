@@ -10,6 +10,8 @@ Windows 기본 명령을 사용하여 불필요한 백업이나 구버전 데이
 > 💡 본 프로그램은 Google Gemini의 도움을 받아 C#으로 제작되었으며, 
 > 네트워크 통신이나 백그라운드 상주 없이 투명한 '단일 실행'을 지향합니다.
 
+**본 프로젝트는 WindowsSystemCleaner에 통합되었습니다. (링크 : https://github.com/mikuchan1004/windows-system-cleaner)**
+
 ---
 
 
